@@ -11,6 +11,7 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_HEAP_OPTS: "-Xmx128M -Xms64M"
     ports:
       - "2181:2181"
     networks:
@@ -32,6 +33,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms128M"
     networks:
       trading-net:
         aliases:
@@ -60,6 +62,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SIMULATION_MODE: "true"
+      JAVA_TOOL_OPTIONS: "-Xmx384M -Xms128M"
     restart: always
     networks:
       - trading-net
