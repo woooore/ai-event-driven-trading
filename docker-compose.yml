@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  trading-net:
+    driver: bridge
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
@@ -9,6 +13,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    networks:
+      - trading-net
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
@@ -26,12 +32,18 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      trading-net:
+        aliases:
+          - kafka
 
   redis:
     image: redis:7.0-alpine
     container_name: redis
     ports:
       - "6379:6379"
+    networks:
+      - trading-net
 
   core-trading-engine:
     build:
@@ -49,6 +61,8 @@ services:
       REDIS_PORT: 6379
       SIMULATION_MODE: "true"
     restart: always
+    networks:
+      - trading-net
 
   ai-signal-worker:
     build:
@@ -62,3 +76,5 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     restart: always
+    networks:
+      - trading-net
