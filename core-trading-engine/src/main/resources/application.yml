@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: core-trading-engine
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS:127.0.0.1:9092}
+    consumer:
+      group-id: trading-engine-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+
+trading:
+  # 가상 시뮬레이션 모드 (true일 경우 실계좌 주문 대신 1,000만원 가상 체결 및 웹 대시보드 연동)
+  simulation-mode: ${SIMULATION_MODE:true}
+  default-quantity: 1 # 기본 매수 수량 (주)
+  initial-capital-krw: 10000000 # 초기 가상 시드 머니 (1,000만원)
+  usd-krw-rate: 1350.0 # 환율
+  take-profit-ratio: 0.03 # 목표 익절선 (+3.0%)
+  stop-loss-ratio: 0.065 # 안전 손절선 (-6.5%)
+
+kis:
+  # 실전투자: https://openapi.koreainvestment.com:9443
+  # 모의투자: https://openapivts.koreainvestment.com:29443
+  base-url: ${KIS_BASE_URL:https://openapi.koreainvestment.com:9443}
+  app-key: ${KIS_APP_KEY:YOUR_KIS_APP_KEY_HERE}
+  app-secret: ${KIS_APP_SECRET:YOUR_KIS_APP_SECRET_HERE}
+  account-no: ${KIS_ACCOUNT_NO:YOUR_KIS_ACCOUNT_NO_HERE}
+  account-code: ${KIS_ACCOUNT_CODE:01}

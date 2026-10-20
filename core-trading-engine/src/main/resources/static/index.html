@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Event-Driven US Stock Trading | 실시간 가상 포트폴리오</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --bg-card-hover: rgba(31, 41, 55, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(99, 102, 241, 0.3);
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent-cyan: #06b6d4;
+      --accent-indigo: #6366f1;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-amber: #f59e0b;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
+      background-attachment: fixed;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+    }
+
+    .brand-title h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-title p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    .badge-live {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: var(--accent-green);
+    }
+
+    .badge-live .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    .badge-night {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    /* METRIC CARDS GRID */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 22px 20px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-highlight);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-value {
+      font-family: var(--font-mono);
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .card-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .profit-positive {
+      color: var(--accent-green);
+    }
+
+    .profit-negative {
+      color: var(--accent-red);
+    }
+
+    /* SECTION LAYOUT */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr;
+      gap: 22px;
+    }
+
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* TABLE */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--text-secondary);
+      padding: 12px 16px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .ticker-badge {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 14px;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .company-name {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .number-mono {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .btn-sell {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-sell:hover {
+      background: var(--accent-red);
+      color: white;
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    /* TRADE LOGS FEED */
+    .logs-container {
+      max-height: 520px;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .log-item {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      margin-bottom: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .log-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .action-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .tag-buy {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--accent-green);
+    }
+
+    .tag-sell {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .log-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .log-price-info {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .log-reason {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* STRATEGY BANNER */
+    .strategy-banner {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .strategy-tags {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .strat-pill {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- HEADER -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">📈</div>
+        <div class="brand-title">
+          <h1>AI Event-Driven Trading Dashboard</h1>
+          <p>미국 시총 50위 실시간 AI 뉴스 감지 & 1,000만원 가상 자동 매매 엔진</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="badge badge-live">
+          <div class="pulse-dot"></div>
+          <span>KAFKA PIPELINE ACTIVE</span>
+        </div>
+        <div class="badge badge-night">
+          <span>🌙 24H AUTONOMOUS MODE</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- STRATEGY BANNER -->
+    <div class="strategy-banner">
+      <div>
+        <strong>⚡ 적용 트레이딩 룰:</strong> 미국 시총 Top 50 종목 속보 감지시 AI 매수 | 목표 익절 <strong>+3.0%</strong> | 안전 손절 <strong>-6.5%</strong> | <strong>악재 속보 감지시 즉시 긴급 매도</strong>
+      </div>
+      <div class="strategy-tags">
+        <span class="strat-pill" style="color: #67e8f9;">시드 자본: ₩10,000,000</span>
+        <span class="strat-pill" style="color: #6ee7b7;">익절선: +3.0%</span>
+        <span class="strat-pill" style="color: #fca5a5;">손절선: -6.5%</span>
+      </div>
+    </div>
+
+    <!-- METRICS CARDS -->
+    <div class="metrics-grid">
+      <!-- 1. 총 평가 자산 -->
+      <div class="card">
+        <div class="card-label">
+          <span>총 평가 자산 (TOTAL ASSET)</span>
+          <span style="font-size: 16px;">💼</span>
+        </div>
+        <div class="card-value" id="val-total-asset-krw">₩10,000,000</div>
+        <div class="card-sub">
+          <span id="val-total-asset-usd">$7,407.41</span>
+          <span id="val-total-return" class="profit-positive" style="margin-left: auto; font-weight: 700;">+0.00%</span>
+        </div>
+      </div>
+
+      <!-- 2. 가용 현금 잔고 -->
+      <div class="card">
+        <div class="card-label">
+          <span>가용 현금 잔고 (CASH BALANCE)</span>
+          <span style="font-size: 16px;">💵</span>
+        </div>
+        <div class="card-value" id="val-cash-krw">₩10,000,000</div>
+        <div class="card-sub">
+          <span>USD 잔고: </span>
+          <span id="val-cash-usd" style="color: #ffffff;">$7,407.41</span>
+        </div>
+      </div>
+
+      <!-- 3. 보유 주식 평가액 -->
+      <div class="card">
+        <div class="card-label">
+          <span>보유 주식 평가액 (HOLDINGS)</span>
+          <span style="font-size: 16px;">📊</span>
+        </div>
+        <div class="card-value" id="val-stock-krw">₩0</div>
+        <div class="card-sub">
+          <span id="val-stock-usd">$0.00</span>
+          <span id="val-stock-count" style="margin-left: auto;">0개 종목 보유</span>
+        </div>
+      </div>
+
+      <!-- 4. 누적 실현 손익 -->
+      <div class="card">
+        <div class="card-label">
+          <span>누적 실현 손익 (REALIZED PNL)</span>
+          <span style="font-size: 16px;">🎯</span>
+        </div>
+        <div class="card-value" id="val-pnl-usd">+$0.00</div>
+        <div class="card-sub">
+          <span id="val-pnl-krw">₩0원</span>
+          <span style="margin-left: auto; color: var(--text-muted);">익절/손절 누적</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN TWO-COLUMN SECTION -->
+    <div class="main-grid">
+      <!-- LEFT: ACTIVE POSITIONS -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>📌 실시간 보유 종목 (ACTIVE POSITIONS)</span>
+            <span id="badge-holding-count" class="badge" style="background: rgba(99,102,241,0.2); color: #a5b4fc; font-size: 11px;">0</span>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted);">15초 주기 시세 감시</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>종목 (TICKER)</th>
+                <th>수량</th>
+                <th>매수 평단가</th>
+                <th>실시간 현재가</th>
+                <th>수익률 (손익)</th>
+                <th>익절(+3%) / 손절(-6.5%)</th>
+                <th>액션</th>
+              </tr>
+            </thead>
+            <tbody id="positions-tbody">
+              <!-- DYNAMIC CONTENT -->
+            </tbody>
+          </table>
+        </div>
+        <div id="positions-empty" class="empty-state">
+          <div class="empty-state-icon">💤</div>
+          <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">현재 보유 중인 종목이 없습니다.</p>
+          <p style="font-size: 12px;">AI Signal Worker가 미국 시총 50위 종목 중 호재를 감지하면 자동으로 매수됩니다.</p>
+        </div>
+      </div>
+
+      <!-- RIGHT: TRADE LOGS / ACTIVITY FEED -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>📜 체결 히스토리 (TRADE LOGS)</span>
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted);" id="last-updated-time">동기화 중...</span>
+        </div>
+        <div class="logs-container" id="logs-container">
+          <!-- DYNAMIC LOGS -->
+        </div>
+        <div id="logs-empty" class="empty-state">
+          <div class="empty-state-icon">⏳</div>
+          <p style="font-size: 13px;">체결된 거래 내역이 없습니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '/api/portfolio';
+
+    // 천단위 콤마 포맷팅 유틸
+    function formatKrw(num) {
+      return '₩' + Math.round(num || 0).toLocaleString('ko-KR');
+    }
+
+    function formatUsd(num) {
+      return '$' + Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatPct(num) {
+      const n = Number(num || 0);
+      const sign = n >= 0 ? '+' : '';
+      return `${sign}${n.toFixed(2)}%`;
+    }
+
+    async function fetchDashboard() {
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) return;
+        const data = await res.json();
+        updateUI(data);
+      } catch (err) {
+        console.error('대시보드 데이터 패치 실패:', err);
+      }
+    }
+
+    function updateUI(data) {
+      // 1. 메트릭 카드 업데이트
+      document.getElementById('val-total-asset-krw').textContent = formatKrw(data.totalAssetKrw);
+      document.getElementById('val-total-asset-usd').textContent = formatUsd(data.totalAssetUsd);
+
+      const returnEl = document.getElementById('val-total-return');
+      returnEl.textContent = formatPct(data.totalReturnRate);
+      returnEl.className = data.totalReturnRate >= 0 ? 'profit-positive' : 'profit-negative';
+
+      document.getElementById('val-cash-krw').textContent = formatKrw(data.currentCashKrw);
+      document.getElementById('val-cash-usd').textContent = formatUsd(data.currentCashUsd);
+
+      document.getElementById('val-stock-krw').textContent = formatKrw(data.stockValuationKrw);
+      document.getElementById('val-stock-usd').textContent = formatUsd(data.stockValuationUsd);
+      document.getElementById('val-stock-count').textContent = `${(data.positions || []).length}개 종목 보유`;
+
+      const pnlEl = document.getElementById('val-pnl-usd');
+      const pnlSign = (data.cumulativeRealizedPnlUsd || 0) >= 0 ? '+' : '';
+      pnlEl.textContent = `${pnlSign}${formatUsd(data.cumulativeRealizedPnlUsd)}`;
+      pnlEl.className = `card-value ${(data.cumulativeRealizedPnlUsd || 0) >= 0 ? 'profit-positive' : 'profit-negative'}`;
+
+      const pnlKrwSign = (data.cumulativeRealizedPnlKrw || 0) >= 0 ? '+' : '';
+      document.getElementById('val-pnl-krw').textContent = `${pnlKrwSign}${formatKrw(data.cumulativeRealizedPnlKrw)}`;
+
+      // 2. 보유 포지션 테이블 업데이트
+      const positions = data.positions || [];
+      const tbody = document.getElementById('positions-tbody');
+      const emptyPos = document.getElementById('positions-empty');
+      document.getElementById('badge-holding-count').textContent = positions.length;
+
+      if (positions.length === 0) {
+        tbody.innerHTML = '';
+        emptyPos.style.display = 'block';
+      } else {
+        emptyPos.style.display = 'none';
+        tbody.innerHTML = positions.map(p => {
+          const profitClass = p.profitRate >= 0 ? 'profit-positive' : 'profit-negative';
+          return `
+            <tr>
+              <td>
+                <span class="ticker-badge">${p.ticker}</span>
+                <span class="company-name">${p.stockName}</span>
+              </td>
+              <td class="number-mono">${p.quantity}주</td>
+              <td class="number-mono">${formatUsd(p.buyPrice)}</td>
+              <td class="number-mono">${formatUsd(p.currentPrice)}</td>
+              <td>
+                <span class="number-mono ${profitClass}">${formatPct(p.profitRate)}</span>
+                <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${formatUsd(p.unrealizedPnl)}</div>
+              </td>
+              <td>
+                <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">TP: ${formatUsd(p.takeProfitPrice)}</div>
+                <div style="font-size: 11px; color: var(--accent-red); font-family: var(--font-mono);">SL: ${formatUsd(p.stopLossPrice)}</div>
+              </td>
+              <td>
+                <button class="btn-sell" onclick="sellStock('${p.ticker}')">긴급매도</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // 3. 체결 히스토리 로그 업데이트
+      const logs = data.tradeLogs || [];
+      const logContainer = document.getElementById('logs-container');
+      const emptyLogs = document.getElementById('logs-empty');
+
+      if (logs.length === 0) {
+        logContainer.innerHTML = '';
+        emptyLogs.style.display = 'block';
+      } else {
+        emptyLogs.style.display = 'none';
+        logContainer.innerHTML = logs.map(l => {
+          const isBuy = l.action === 'BUY';
+          const tagClass = isBuy ? 'tag-buy' : 'tag-sell';
+          const timeFormatted = l.timestamp ? l.timestamp.replace('T', ' ').substring(5, 19) : '';
+          return `
+            <div class="log-item">
+              <div class="log-header">
+                <span class="action-tag ${tagClass}">${l.action} ${l.ticker}</span>
+                <span class="log-time">${timeFormatted}</span>
+              </div>
+              <div class="log-price-info">
+                <span>${l.quantity}주 @ ${formatUsd(l.price)}</span>
+                ${!isBuy ? `<span class="${l.profitRate >= 0 ? 'profit-positive' : 'profit-negative'}" style="margin-left: 8px;">(${formatPct(l.profitRate)})</span>` : ''}
+              </div>
+              <div class="log-reason">${l.reason || 'AI 시그널 주문 체결'}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('last-updated-time').textContent = '동기화: ' + new Date().toLocaleTimeString('ko-KR');
+    }
+
+    // 수동 긴급 매도 함수
+    async function sellStock(ticker) {
+      if (!confirm(`${ticker} 종목을 즉시 시장가로 긴급 매도하시겠습니까?`)) return;
+      try {
+        const res = await fetch(`/api/portfolio/sell/${ticker}`, { method: 'POST' });
+        const result = await res.json();
+        alert(result.message);
+        fetchDashboard();
+      } catch (err) {
+        alert('매도 실패: ' + err.message);
+      }
+    }
+
+    // 3초마다 실시간 자동 폴링 리프레시
+    fetchDashboard();
+    setInterval(fetchDashboard, 3000);
+  </script>
+</body>
+</html>

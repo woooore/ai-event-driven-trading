@@ -1,0 +1,7 @@
+openai>=1.40.0
+pydantic>=2.8.0
+confluent-kafka>=2.5.0
+python-dotenv>=1.0.0
+yfinance>=0.2.40
+feedparser>=6.0.10
+requests>=2.32.0

@@ -1,0 +1,45 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.3.4' // 버전은 조금 달라도 괜찮습니다
+	id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.trading'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// 1. Spring Web (여기에 에러가 난 Jackson/ObjectMapper가 포함되어 있습니다)
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	// 2. Kafka 연동
+	implementation 'org.springframework.kafka:spring-kafka'
+
+	// 3. Lombok (여기에 에러가 난 @RequiredArgsConstructor가 포함되어 있습니다)
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// 테스트용 라이브러리
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
