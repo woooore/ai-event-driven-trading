@@ -83,30 +83,49 @@ flowchart LR
 
 ## 🚀 5. 실행 및 테스트 방법 (Quick Start)
 
-### Step 1. 인프라 실행 (Docker)
+### 🌟 옵션 A: 클라우드 서버 24시간 무중단 올인원 실행 (가장 추천)
+> 내 컴퓨터를 꺼도 클라우드(AWS, Oracle Cloud 등)에서 Kafka, Redis, Spring Boot, AI Worker, 웹 대시보드가 단 한 줄로 모두 실행됩니다.
+
 ```bash
-docker-compose up -d
+# 1. 저장소 클론
+git clone https://github.com/woooore/ai-event-driven-trading.git
+cd ai-event-driven-trading
+
+# 2. OpenAI API 키 설정
+cp ai-signal-worker/.env.example ai-signal-worker/.env
+# ai-signal-worker/.env 파일에 본인의 OPENAI_API_KEY 입력
+
+# 3. 전체 시스템 원클릭 백그라운드 구동!
+docker-compose up -d --build
+
+# 4. 브라우저에서 웹 대시보드 접속: http://{서버IP}:8080
+```
+
+---
+
+### 💻 옵션 B: 로컬 개발 환경 분리 실행 (IntelliJ + 로컬 Python)
+
+#### Step 1. 인프라 실행 (Docker)
+```bash
+docker-compose up -d zookeeper kafka redis
 ```
 > Kafka(9092), Zookeeper(2181), Redis(6379)가 백그라운드로 실행됩니다.
 
-### Step 2. Core Trading Engine 실행 (IntelliJ)
+#### Step 2. Core Trading Engine 실행 (IntelliJ)
 1. IntelliJ에서 `core-trading-engine` 프로젝트 오픈
 2. `src/main/resources/application.yml` 확인 (`simulation-mode: true` 기본값 설정)
 3. `CoreTradingEngineApplication.java` 실행
-4. Kafka Consumer가 `stock-signals` 토픽 리스닝 시작
+4. 브라우저에서 `http://localhost:8080` 웹 대시보드 오픈
 
-### Step 3. AI Signal Worker 실행 (Python)
+#### Step 3. AI Signal Worker 실행 (Python)
 ```bash
 cd ai-signal-worker
 
-# 1회 스캔 테스트 (NVDA, AAPL, TSLA, MSFT, AMZN 실시간 뉴스 & AI 판단)
-.\venv\Scripts\python.exe analyzer.py
-
-# IntelliJ 실시간 연동 테스트용 가상 시그널 즉시 발송
-.\venv\Scripts\python.exe analyzer.py --test-fire
-
-# 실시간 60초 주기 무한 모니터링 데몬 실행
+# 24시간 실시간 무한 모니터링 데몬 실행 (시총 50위 감시)
 .\venv\Scripts\python.exe analyzer.py --loop --interval 60
+
+# 또는 즉시 매수 연동 테스트용 가상 시그널 발송
+.\venv\Scripts\python.exe analyzer.py --test-fire --ticker AAPL
 ```
 
 ---
