@@ -2043,11 +2043,11 @@
       window.chartInitialized = true;
     }
 
-    // 줌 배율 적용 함수
+    // 줌 배율 적용 함수 (확대 / 축소)
     function applyChartZoom(factor, mouseX) {
       if (!chartCandles || chartCandles.length === 0) return;
-      const minCandles = 15;
-      const maxCandles = chartCandles.length;
+      const minCandles = 8; // 최소 8개 캔들까지 정밀 확대 (초근접 뷰)
+      const maxCandles = chartCandles.length; // 최대 축소는 현재 기간 100%
 
       const oldVisibleCount = chartVisibleCount;
       let newVisibleCount = Math.round(chartVisibleCount * factor);
@@ -2070,13 +2070,19 @@
     }
 
     function chartZoom(factor) {
-      applyChartZoom(factor === 1.3 ? 0.75 : 1.3, null);
+      // factor가 1보다 크면 확대(0.75), 작으면 축소(1.33)
+      if (factor === 1.3 || factor === 'in') {
+        applyChartZoom(0.75, null);
+      } else {
+        applyChartZoom(1.33, null);
+      }
     }
 
+    // 전체 기간 100% 한눈에 축소 보기 (Fit to View)
     function chartResetZoom() {
       if (!chartCandles || chartCandles.length === 0) return;
-      chartVisibleCount = Math.min(chartCandles.length, Math.max(25, Math.round(chartCandles.length * 0.4)));
-      chartVisibleStart = Math.max(0, chartCandles.length - chartVisibleCount);
+      chartVisibleCount = chartCandles.length;
+      chartVisibleStart = 0;
       drawCandlestickChart();
     }
 
@@ -2260,7 +2266,10 @@
 
       // 4. 캔들스틱 및 거래량 바 렌더링
       const candleSlotWidth = chartWidth / slice.length;
-      const candleBodyWidth = Math.max(2, candleSlotWidth * 0.72);
+      const candleBodyWidth = Math.max(1.2, candleSlotWidth * 0.72);
+      const totalSlice = slice.length;
+      const isLongPeriod = totalSlice >= 90;
+      const labelInterval = Math.max(1, Math.round(totalSlice / (isLongPeriod ? 6 : 7)));
 
       let hoveredCandle = null;
       let hoveredX = -1;
@@ -2277,7 +2286,7 @@
 
         // 꼬리선 (Wick)
         ctx.strokeStyle = color;
-        ctx.lineWidth = Math.max(1, candleBodyWidth * 0.15);
+        ctx.lineWidth = Math.max(1, Math.min(1.5, candleBodyWidth * 0.25));
         ctx.beginPath();
         ctx.moveTo(xCenter, highY);
         ctx.lineTo(xCenter, lowY);
@@ -2285,7 +2294,7 @@
 
         // 몸통 (Body)
         const bodyTop = Math.min(openY, closeY);
-        const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
+        const bodyHeight = Math.max(1.0, Math.abs(closeY - openY));
 
         ctx.fillStyle = color;
         ctx.fillRect(xCenter - candleBodyWidth / 2, bodyTop, candleBodyWidth, bodyHeight);
@@ -2306,12 +2315,14 @@
           hoveredX = xCenter;
         }
 
-        // X축 날짜 라벨
-        const labelInterval = Math.max(1, Math.round(slice.length / 7));
-        if (idx % labelInterval === 0) {
-          ctx.fillStyle = '#6b7280';
-          ctx.textAlign = 'center';
-          ctx.fillText(c.time.substring(5), xCenter, h - 8);
+        // X축 날짜 라벨 (긴 기간은 YY.MM, 짧은 기간은 MM-DD)
+        if (idx % labelInterval === 0 || idx === totalSlice - 1) {
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.textAlign = (idx === totalSlice - 1) ? 'right' : (idx === 0 ? 'left' : 'center');
+          const labelX = (idx === totalSlice - 1) ? chartWidth - 2 : (idx === 0 ? 2 : xCenter);
+          const dateLabel = isLongPeriod ? (c.time.substring(2, 7).replace('-', '.')) : c.time.substring(5);
+          ctx.fillText(dateLabel, labelX, h - 8);
         }
       });
 
