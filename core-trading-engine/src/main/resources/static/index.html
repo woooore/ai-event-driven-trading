@@ -552,6 +552,247 @@
       font-size: 12px;
       font-weight: 600;
     }
+
+    /* TAB NAVIGATION BAR */
+    .nav-tabs-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    .nav-tab-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 10px 22px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.25s ease;
+      font-family: var(--font-sans);
+    }
+
+    .nav-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .nav-tab-btn.active {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(6, 182, 212, 0.25));
+      border-color: var(--accent-indigo);
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.3);
+    }
+
+    .tab-badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+
+    .nav-tab-btn.active .tab-badge {
+      background: var(--accent-indigo);
+      color: #ffffff;
+    }
+
+    /* DIARY TAB STYLES */
+    .diary-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .diary-kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 16px 18px;
+      backdrop-filter: blur(12px);
+    }
+
+    .diary-kpi-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .diary-kpi-val {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .diary-entries-list {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .diary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      transition: all 0.25s ease;
+    }
+
+    .diary-card:hover {
+      border-color: var(--border-highlight);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .diary-header {
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .diary-date-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .diary-date-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-today {
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      color: var(--accent-cyan);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .diary-day-pnl {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .diary-pnl-pos {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: var(--accent-green);
+    }
+
+    .diary-pnl-neg {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: var(--accent-red);
+    }
+
+    .diary-pnl-zero {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .diary-body {
+      padding: 18px 20px;
+    }
+
+    .diary-stock-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .diary-stock-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .diary-stock-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .diary-trade-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .diary-trade-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .diary-trade-reason {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+
+    .diary-note-box {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.05));
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      display: flex;
+      gap: 12px;
+    }
+
+    .diary-note-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
@@ -646,74 +887,147 @@
       </div>
     </div>
 
-    <!-- MAIN TWO-COLUMN SECTION -->
-    <div class="main-grid">
-      <!-- LEFT: ACTIVE POSITIONS -->
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-title">
-            <span>📌 실시간 보유 종목 (ACTIVE POSITIONS)</span>
-            <span id="badge-holding-count" class="badge" style="background: rgba(99,102,241,0.2); color: #a5b4fc; font-size: 11px;">0</span>
-          </div>
-          <span style="font-size: 12px; color: var(--text-muted);">15초 주기 시세 감시</span>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>종목 (TICKER)</th>
-                <th>수량</th>
-                <th>매수 평단가</th>
-                <th>실시간 현재가</th>
-                <th>수익률 (손익)</th>
-                <th>익절(+3%) / 손절(-6.5%)</th>
-                <th>액션</th>
-              </tr>
-            </thead>
-            <tbody id="positions-tbody">
-              <!-- DYNAMIC CONTENT -->
-            </tbody>
-          </table>
-        </div>
-        <div id="positions-empty" class="empty-state">
-          <div class="empty-state-icon">💤</div>
-          <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">현재 보유 중인 종목이 없습니다.</p>
-          <p style="font-size: 12px;">AI Signal Worker가 미국 시총 50위 종목 중 호재를 감지하면 자동으로 매수됩니다.</p>
-        </div>
-      </div>
-
-      <!-- RIGHT: TRADE LOGS / ACTIVITY FEED -->
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-title">
-            <span>📜 체결 히스토리 (TRADE LOGS)</span>
-          </div>
-          <span style="font-size: 11px; color: var(--text-muted);" id="last-updated-time">동기화 중...</span>
-        </div>
-        <div class="logs-container" id="logs-container">
-          <!-- DYNAMIC LOGS -->
-        </div>
-        <div id="logs-empty" class="empty-state">
-          <div class="empty-state-icon">⏳</div>
-          <p style="font-size: 13px;">체결된 거래 내역이 없습니다.</p>
-        </div>
+    <!-- TAB NAVIGATION BAR -->
+    <div class="nav-tabs-bar">
+      <button class="nav-tab-btn active" id="btn-tab-realtime" onclick="switchMainTab('realtime')">
+        <span style="font-size: 16px;">📊</span>
+        <span>실시간 트레이딩 대시보드</span>
+      </button>
+      <button class="nav-tab-btn" id="btn-tab-diary" onclick="switchMainTab('diary')">
+        <span style="font-size: 16px;">📖</span>
+        <span>일별 매매 일지 & 일기장 (Daily Trading Diary)</span>
+        <span class="tab-badge" id="diary-day-count-badge">0일</span>
+      </button>
     </div>
 
-    <!-- BOTTOM: TICKER-BY-TICKER TRADE JOURNEY -->
-    <div class="section-card" style="margin-top: 24px;">
-      <div class="section-header">
-        <div class="section-title">
-          <span>📊 종목별 매매 히스토리 & 타임라인 (TICKER TRADE JOURNEY)</span>
-          <span id="badge-ticker-journey-count" class="badge" style="background: rgba(6,182,212,0.2); color: #67e8f9; font-size: 11px;">0개 종목</span>
+    <!-- TAB 1: 실시간 트레이딩 모니터링 -->
+    <div id="tab-pane-realtime">
+      <!-- MAIN TWO-COLUMN SECTION -->
+      <div class="main-grid">
+        <!-- LEFT: ACTIVE POSITIONS -->
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">
+              <span>📌 실시간 보유 종목 (ACTIVE POSITIONS)</span>
+              <span id="badge-holding-count" class="badge" style="background: rgba(99,102,241,0.2); color: #a5b4fc; font-size: 11px;">0</span>
+            </div>
+            <span style="font-size: 12px; color: var(--text-muted);">15초 주기 시세 감시</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>종목 (TICKER)</th>
+                  <th>수량</th>
+                  <th>매수 평단가</th>
+                  <th>실시간 현재가</th>
+                  <th>수익률 (손익)</th>
+                  <th>익절(+3%) / 손절(-6.5%)</th>
+                  <th>액션</th>
+                </tr>
+              </thead>
+              <tbody id="positions-tbody">
+                <!-- DYNAMIC CONTENT -->
+              </tbody>
+            </table>
+          </div>
+          <div id="positions-empty" class="empty-state">
+            <div class="empty-state-icon">💤</div>
+            <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">현재 보유 중인 종목이 없습니다.</p>
+            <p style="font-size: 12px;">AI Signal Worker가 미국 시총 50위 종목 중 호재를 감지하면 자동으로 매수됩니다.</p>
+          </div>
         </div>
-        <span style="font-size: 12px; color: var(--text-muted);">종목별 매수 시점 → 매도 시점(수익률) 누적 타임라인</span>
+
+        <!-- RIGHT: TRADE LOGS / ACTIVITY FEED -->
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">
+              <span>📜 체결 히스토리 (TRADE LOGS)</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted);" id="last-updated-time">동기화 중...</span>
+          </div>
+          <div class="logs-container" id="logs-container">
+            <!-- DYNAMIC LOGS -->
+          </div>
+          <div id="logs-empty" class="empty-state">
+            <div class="empty-state-icon">⏳</div>
+            <p style="font-size: 13px;">체결된 거래 내역이 없습니다.</p>
+          </div>
+        </div>
       </div>
-      <div id="ticker-journey-grid" class="ticker-journey-grid">
-        <!-- DYNAMIC TICKER JOURNEY CARDS -->
+
+      <!-- BOTTOM: TICKER-BY-TICKER TRADE JOURNEY -->
+      <div class="section-card" style="margin-top: 24px;">
+        <div class="section-header">
+          <div class="section-title">
+            <span>📊 종목별 매매 히스토리 & 타임라인 (TICKER TRADE JOURNEY)</span>
+            <span id="badge-ticker-journey-count" class="badge" style="background: rgba(6,182,212,0.2); color: #67e8f9; font-size: 11px;">0개 종목</span>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted);">종목별 매수 시점 → 매도 시점(수익률) 누적 타임라인</span>
+        </div>
+        <div id="ticker-journey-grid" class="ticker-journey-grid">
+          <!-- DYNAMIC TICKER JOURNEY CARDS -->
+        </div>
+        <div id="ticker-journey-empty" class="empty-state">
+          <div class="empty-state-icon">📈</div>
+          <p style="font-size: 13px;">체결된 종목별 매매 타임라인이 아직 없습니다.</p>
+        </div>
       </div>
-      <div id="ticker-journey-empty" class="empty-state">
-        <div class="empty-state-icon">📈</div>
-        <p style="font-size: 13px;">체결된 종목별 매매 타임라인이 아직 없습니다.</p>
+    </div>
+
+    <!-- TAB 2: 일별 매매 일지 & 일기장 (DAILY TRADING DIARY) -->
+    <div id="tab-pane-diary" style="display: none;">
+      <!-- DIARY KPI SUMMARY -->
+      <div class="diary-kpi-grid">
+        <div class="diary-kpi-card">
+          <div class="diary-kpi-label">
+            <span>총 매매 일수</span>
+            <span>📅</span>
+          </div>
+          <div class="diary-kpi-val" id="diary-kpi-days">0일간의 기록</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="diary-kpi-trade-count">총 0건 거래 체결</div>
+        </div>
+
+        <div class="diary-kpi-card">
+          <div class="diary-kpi-label">
+            <span>일기장 누적 실현 손익</span>
+            <span>💰</span>
+          </div>
+          <div class="diary-kpi-val profit-positive" id="diary-kpi-pnl">+$0.00</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="diary-kpi-pnl-krw">₩0원</div>
+        </div>
+
+        <div class="diary-kpi-card">
+          <div class="diary-kpi-label">
+            <span>일별 마감 성과</span>
+            <span>🎯</span>
+          </div>
+          <div class="diary-kpi-val" id="diary-kpi-winrate" style="color: var(--accent-cyan);">0승 0패</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">익절 마감일 vs 손절 마감일</div>
+        </div>
+
+        <div class="diary-kpi-card">
+          <div class="diary-kpi-label">
+            <span>최고 수익일 (BEST DAY)</span>
+            <span>🏆</span>
+          </div>
+          <div class="diary-kpi-val" id="diary-kpi-best-day" style="font-size: 16px; color: #a5b4fc;">-</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="diary-kpi-best-pnl">-</div>
+        </div>
+      </div>
+
+      <!-- DIARY ENTRIES LIST -->
+      <div id="diary-entries-list" class="diary-entries-list">
+        <!-- DYNAMIC DAILY ENTRIES -->
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="diary-empty-state" class="empty-state section-card" style="display: none; padding: 60px 24px;">
+        <div class="empty-state-icon">📖</div>
+        <p style="font-size: 16px; font-weight: 700; margin-bottom: 6px; color: #f3f4f6;">아직 기록된 일별 매매 일지가 없습니다.</p>
+        <p style="font-size: 13px; color: var(--text-secondary); max-width: 520px; margin: 0 auto; line-height: 1.6;">
+          AI Signal Worker가 뉴스를 감지하여 첫 매매를 체결하면, 날짜별 매수·매도 종목 일람과 손익 일기장이 자동으로 일목요연하게 작성됩니다.
+        </p>
       </div>
     </div>
   </div>
@@ -865,6 +1179,10 @@
       // 4. 종목별 매매 타임라인 렌더링
       renderTickerJourneys(data);
 
+      // 5. 일별 매매 일지 렌더링
+      window.lastDashboardData = data;
+      renderDiaryTab(data);
+
       document.getElementById('last-updated-time').textContent = '동기화: ' + new Date().toLocaleTimeString('ko-KR');
     }
 
@@ -982,6 +1300,301 @@
               <span class="${pnlSummaryClass}" style="font-weight: 700;">
                 ${pnlSign}${formatUsd(totalPnl)} (${pnlSign}${formatKrw(totalPnl * rate)})
               </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 탭 전환 함수
+    let currentMainTab = 'realtime';
+    function switchMainTab(tab) {
+      currentMainTab = tab;
+      const btnRealtime = document.getElementById('btn-tab-realtime');
+      const btnDiary = document.getElementById('btn-tab-diary');
+      const paneRealtime = document.getElementById('tab-pane-realtime');
+      const paneDiary = document.getElementById('tab-pane-diary');
+
+      if (tab === 'realtime') {
+        btnRealtime.classList.add('active');
+        btnDiary.classList.remove('active');
+        paneRealtime.style.display = 'block';
+        paneDiary.style.display = 'none';
+      } else {
+        btnDiary.classList.add('active');
+        btnRealtime.classList.remove('active');
+        paneDiary.style.display = 'block';
+        paneRealtime.style.display = 'none';
+        if (window.lastDashboardData) {
+          renderDiaryTab(window.lastDashboardData);
+        }
+      }
+    }
+
+    function getDayOfWeekKr(dateStr) {
+      if (!dateStr) return '';
+      const days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+      const parts = dateStr.split('-');
+      if (parts.length < 3) return '';
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      return days[d.getDay()] || '';
+    }
+
+    function isTodayDate(dateStr) {
+      if (!dateStr) return false;
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return dateStr === `${y}-${m}-${d}`;
+    }
+
+    // 일별 매매 일지 렌더링 함수
+    function renderDiaryTab(data) {
+      const logs = data.tradeLogs || [];
+      const positions = data.positions || [];
+      const rate = data.usdKrwRate || 1350.0;
+
+      const diaryList = document.getElementById('diary-entries-list');
+      const emptyState = document.getElementById('diary-empty-state');
+      const dayCountBadge = document.getElementById('diary-day-count-badge');
+
+      if (logs.length === 0) {
+        diaryList.innerHTML = '';
+        emptyState.style.display = 'block';
+        dayCountBadge.textContent = '0일';
+        document.getElementById('diary-kpi-days').textContent = '0일간의 기록';
+        document.getElementById('diary-kpi-trade-count').textContent = '총 0건 거래 체결';
+        document.getElementById('diary-kpi-pnl').textContent = '+$0.00';
+        document.getElementById('diary-kpi-pnl-krw').textContent = '₩0원';
+        document.getElementById('diary-kpi-winrate').textContent = '0승 0패';
+        document.getElementById('diary-kpi-best-day').textContent = '-';
+        document.getElementById('diary-kpi-best-pnl').textContent = '-';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+
+      // 1. 날짜별 그룹핑 (YYYY-MM-DD)
+      const dayGroups = {};
+      logs.forEach(l => {
+        const timeStr = l.timestamp || '';
+        const dateKey = timeStr.length >= 10 ? timeStr.substring(0, 10) : '기타 날짜';
+        if (!dayGroups[dateKey]) {
+          dayGroups[dateKey] = [];
+        }
+        dayGroups[dateKey].push(l);
+      });
+
+      // 날짜 내림차순 정렬 (최신 날짜가 맨 위)
+      const sortedDates = Object.keys(dayGroups).sort().reverse();
+      dayCountBadge.textContent = `${sortedDates.length}일`;
+
+      // 2. 전체 일기장 KPI 계산
+      let totalDiaryPnlUsd = 0;
+      let winningDays = 0;
+      let losingDays = 0;
+      let bestDay = null;
+      let bestDayPnl = -Infinity;
+
+      sortedDates.forEach(d => {
+        const dayLogs = dayGroups[d];
+        let dayPnl = 0;
+        dayLogs.forEach(l => {
+          if (l.action === 'SELL' && l.realizedPnl != null) {
+            dayPnl += l.realizedPnl;
+          }
+        });
+        totalDiaryPnlUsd += dayPnl;
+        if (dayPnl > 0.001) winningDays++;
+        else if (dayPnl < -0.001) losingDays++;
+
+        if (dayPnl > bestDayPnl) {
+          bestDayPnl = dayPnl;
+          bestDay = d;
+        }
+      });
+
+      // KPI UI 업데이트
+      document.getElementById('diary-kpi-days').textContent = `${sortedDates.length}일간의 기록`;
+      document.getElementById('diary-kpi-trade-count').textContent = `총 ${logs.length}건 거래 체결`;
+
+      const pnlSign = totalDiaryPnlUsd >= 0 ? '+' : '';
+      const pnlEl = document.getElementById('diary-kpi-pnl');
+      pnlEl.textContent = `${pnlSign}${formatUsd(totalDiaryPnlUsd)}`;
+      pnlEl.className = `diary-kpi-val ${totalDiaryPnlUsd >= 0 ? 'profit-positive' : 'profit-negative'}`;
+      document.getElementById('diary-kpi-pnl-krw').textContent = `${pnlSign}${formatKrw(totalDiaryPnlUsd * rate)}`;
+
+      const totalClosedDays = winningDays + losingDays;
+      const winRate = totalClosedDays > 0 ? Math.round((winningDays / totalClosedDays) * 100) : (winningDays > 0 ? 100 : 0);
+      document.getElementById('diary-kpi-winrate').textContent = `${winningDays}승 ${losingDays}패 (${winRate}%)`;
+
+      if (bestDay && bestDayPnl > -Infinity) {
+        document.getElementById('diary-kpi-best-day').textContent = bestDay;
+        const bSign = bestDayPnl >= 0 ? '+' : '';
+        document.getElementById('diary-kpi-best-pnl').textContent = `${bSign}${formatUsd(bestDayPnl)} (${bSign}${formatKrw(bestDayPnl * rate)})`;
+      } else {
+        document.getElementById('diary-kpi-best-day').textContent = '-';
+        document.getElementById('diary-kpi-best-pnl').textContent = '-';
+      }
+
+      // 3. 각 날짜별 일기장 카드 렌더링
+      diaryList.innerHTML = sortedDates.map(dateStr => {
+        const dayLogs = dayGroups[dateStr];
+        const dayOfWeek = getDayOfWeekKr(dateStr);
+        const isToday = isTodayDate(dateStr);
+        const todayBadgeHtml = isToday ? '<span class="badge badge-today">오늘 TODAY</span>' : '';
+
+        // 당일 실현손익 및 통계 계산
+        let dayPnlUsd = 0;
+        let buyCount = 0;
+        let sellCount = 0;
+
+        // 종목별 그룹핑
+        const tickerMap = {};
+        dayLogs.forEach(l => {
+          const t = l.ticker.toUpperCase();
+          if (!tickerMap[t]) {
+            tickerMap[t] = {
+              ticker: t,
+              stockName: l.stockName || t,
+              trades: [],
+              tickerPnl: 0
+            };
+          }
+          tickerMap[t].trades.push(l);
+          if (l.action === 'BUY') {
+            buyCount++;
+          } else {
+            sellCount++;
+            if (l.realizedPnl != null) {
+              tickerMap[t].tickerPnl += l.realizedPnl;
+              dayPnlUsd += l.realizedPnl;
+            }
+          }
+        });
+
+        // 당일 PnL 스타일
+        let pnlBadgeClass = 'diary-pnl-zero';
+        let pnlBadgeSign = '';
+        if (dayPnlUsd > 0.001) {
+          pnlBadgeClass = 'diary-pnl-pos';
+          pnlBadgeSign = '+';
+        } else if (dayPnlUsd < -0.001) {
+          pnlBadgeClass = 'diary-pnl-neg';
+        }
+
+        // 종목별 정산 HTML 생성
+        const tickers = Object.keys(tickerMap);
+        const stockCardsHtml = tickers.map(t => {
+          const stockInfo = tickerMap[t];
+          const stockPnlSign = stockInfo.tickerPnl >= 0 ? '+' : '';
+          const stockPnlClass = stockInfo.tickerPnl >= 0 ? 'profit-positive' : 'profit-negative';
+
+          // 현재 보유 여부 확인
+          const currentPos = positions.find(p => p.ticker.toUpperCase() === t);
+
+          // 시간순(오래된 순) 정렬: 매수 -> 매도 순서
+          const chronologicalTrades = [...stockInfo.trades].reverse();
+
+          const tradesListHtml = chronologicalTrades.map(l => {
+            const isBuy = l.action === 'BUY';
+            const timeOnly = (l.timestamp && l.timestamp.length >= 19) ? l.timestamp.substring(11, 19) : (l.timestamp || '');
+            const priceKrw = formatKrw(l.price * rate);
+            const tagClass = isBuy ? 'tag-buy' : ((l.realizedPnl || 0) >= 0 ? 'tag-take-profit' : 'tag-stop-loss');
+            const actionText = l.actionLabel || (isBuy ? '매수 체결' : '매도 체결');
+
+            const pnlFragment = !isBuy
+              ? `<span class="${(l.realizedPnl || 0) >= 0 ? 'profit-positive' : 'profit-negative'}" style="margin-left: 6px;">[${formatPct(l.profitRate)} / ${(l.realizedPnl || 0) >= 0 ? '+' : ''}${formatUsd(l.realizedPnl)}]</span>`
+              : '';
+
+            return `
+              <div class="diary-trade-row">
+                <div class="diary-trade-top">
+                  <div>
+                    <span class="action-tag ${tagClass}">${actionText}</span>
+                    <span style="margin-left: 6px;">${l.quantity}주 @ ${formatUsd(l.price)}</span>
+                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 400;">(${priceKrw})</span>
+                    ${pnlFragment}
+                  </div>
+                  <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${timeOnly}</span>
+                </div>
+                <div class="diary-trade-reason">${l.reason || 'AI 시그널 주문'}</div>
+              </div>
+            `;
+          }).join('');
+
+          const holdingBadgeHtml = currentPos
+            ? `<div style="margin-top: 10px; font-size: 11px; color: #a5b4fc; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); padding: 5px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                 <span>📌 현재 포트폴리오 보유 지속 중 (${currentPos.quantity}주)</span>
+                 <span class="${currentPos.profitRate >= 0 ? 'profit-positive' : 'profit-negative'}" style="font-family: var(--font-mono); font-weight: 700;">평가: ${formatPct(currentPos.profitRate)} (${formatUsd(currentPos.unrealizedPnl)})</span>
+               </div>`
+            : `<div style="margin-top: 8px; font-size: 11px; color: var(--text-muted); text-align: right;">✅ 당일 매매 청산 완료</div>`;
+
+          return `
+            <div class="diary-stock-box">
+              <div class="diary-stock-header">
+                <div>
+                  <span class="ticker-badge">${t}</span>
+                  <span style="font-size: 14px; font-weight: 700; color: #ffffff;">${stockInfo.stockName}</span>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 11px; color: var(--text-muted);">당일 실현손익</div>
+                  <div class="${stockPnlClass}" style="font-family: var(--font-mono); font-size: 13px; font-weight: 700;">
+                    ${stockPnlSign}${formatUsd(stockInfo.tickerPnl)}
+                  </div>
+                </div>
+              </div>
+              <div class="diary-trades-list">
+                ${tradesListHtml}
+              </div>
+              ${holdingBadgeHtml}
+            </div>
+          `;
+        }).join('');
+
+        // 당일 AI 일기 총평 생성
+        let noteText = '';
+        if (dayPnlUsd > 0.001) {
+          noteText = `이날은 총 <strong>${tickers.length}개 종목</strong>(매수 ${buyCount}건, 매도 ${sellCount}건)을 트레이딩했습니다. 시장의 뉴스 모멘텀을 기민하게 포착하여 목표 익절가(+3.0%)에 성공적으로 도달하며, 당일 총 실현 손익 <strong>+${formatUsd(dayPnlUsd)} (+${formatKrw(dayPnlUsd * rate)})</strong>의 우수한 플러스 수익으로 하루를 마감했습니다.`;
+        } else if (dayPnlUsd < -0.001) {
+          noteText = `이날은 총 <strong>${tickers.length}개 종목</strong>(매수 ${buyCount}건, 매도 ${sellCount}건)을 트레이딩했습니다. 시장 변동성으로 인해 리스크 관리 안전 손절(-6.5%) 원칙이 가동되어 당일 실현 손익 <strong>${formatUsd(dayPnlUsd)} (${formatKrw(dayPnlUsd * rate)})</strong>을 기록했습니다. 본 손실 거래의 맥락은 RAG 실패 매매 일지에 즉시 기록되어 다음 매매 시 유사한 고점/선반영 뉴스를 AI가 스스로 차단하도록 학습되었습니다.`;
+        } else if (sellCount > 0) {
+          noteText = `이날은 총 <strong>${tickers.length}개 종목</strong>에 대해 매수 ${buyCount}건, 매도 ${sellCount}건을 체결하며 원금 보존 위주의 중립적인 손익(${formatUsd(dayPnlUsd)})으로 장을 마쳤습니다.`;
+        } else {
+          noteText = `이날은 AI 시그널 엔진이 우량 종목의 호재 뉴스와 안정적인 기술적 지표(RSI 70 미만)를 확인하고 총 <strong>${buyCount}건의 신규 매수</strong>를 집행했습니다. 포지션은 현재 15초 실시간 감시 엔진을 통해 철저하게 익절/손절 관리 중입니다.`;
+        }
+
+        return `
+          <div class="diary-card">
+            <div class="diary-header">
+              <div class="diary-date-group">
+                <div class="diary-date-title">
+                  <span>📅</span>
+                  <span>${dateStr} (${dayOfWeek})</span>
+                  ${todayBadgeHtml}
+                </div>
+                <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 11px;">
+                  총 ${dayLogs.length}건 체결 (매수 ${buyCount} / 매도 ${sellCount})
+                </span>
+              </div>
+              <div class="diary-day-pnl ${pnlBadgeClass}">
+                <span style="font-size: 12px; font-weight: 500; opacity: 0.85;">당일 실현 손익:</span>
+                <span>${pnlBadgeSign}${formatUsd(dayPnlUsd)}</span>
+                <span style="font-size: 12px; opacity: 0.85;">(${pnlBadgeSign}${formatKrw(dayPnlUsd * rate)})</span>
+              </div>
+            </div>
+            <div class="diary-body">
+              <div class="diary-stock-grid">
+                ${stockCardsHtml}
+              </div>
+              <div class="diary-note-box">
+                <div class="diary-note-icon">📝</div>
+                <div>
+                  <div style="font-weight: 700; color: #a5b4fc; margin-bottom: 3px; font-size: 12px;">AI 매매 일기 & 당일 총평</div>
+                  <div style="font-size: 12.5px; color: #cbd5e1; line-height: 1.55;">${noteText}</div>
+                </div>
+              </div>
             </div>
           </div>
         `;
