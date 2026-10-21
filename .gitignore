@@ -25,6 +25,7 @@ venv.bak/
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+!core-trading-engine/app.jar
 
 # IDE
 .idea/
