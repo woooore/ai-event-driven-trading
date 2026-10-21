@@ -30,7 +30,10 @@ dependencies {
 	// 2. Kafka 연동
 	implementation 'org.springframework.kafka:spring-kafka'
 
-	// 3. Lombok (여기에 에러가 난 @RequiredArgsConstructor가 포함되어 있습니다)
+	// 3. Redis & Redisson 분산 락
+	implementation 'org.redisson:redisson-spring-boot-starter:3.31.0'
+
+	// 4. Lombok (여기에 에러가 난 @RequiredArgsConstructor가 포함되어 있습니다)
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 

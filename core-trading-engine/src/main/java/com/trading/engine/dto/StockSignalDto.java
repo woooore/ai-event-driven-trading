@@ -83,6 +83,19 @@ public class StockSignalDto {
      */
     private String reason;
 
+    /**
+     * 14일 상대강도지수 (RSI)
+     */
+    @JsonProperty("rsi")
+    private Double rsi;
+
+    /**
+     * 20일 이동평균선 이격도 (%)
+     */
+    @JsonProperty("ma_disparity")
+    @JsonAlias({"maDisparity"})
+    private Double maDisparity;
+
     // 호환성을 위한 게터
     public String getStockCode() {
         return ticker;

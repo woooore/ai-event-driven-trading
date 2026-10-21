@@ -1,0 +1,57 @@
+[
+  {
+    "id": "loss-001",
+    "ticker": "AAPL",
+    "headline": "Apple Stock Downgraded As Analysts Turn Cautious On iPhone Maker",
+    "summary": "Wall Street analysts debate iPhone replacement cycles and trim price targets.",
+    "ai_reason": "애널리스트 투자의견 조정 기사 속에서도 브랜드 충성도 및 글로벌 서비스 생태계 기대감으로 진입",
+    "action": "BUY",
+    "pnl_usd": -3.20,
+    "pnl_pct": -2.1,
+    "lesson_learned": "애널리스트의 단순 의견/전망 기사는 기관의 물량 털기(세력 떠넘기기)에 노출되기 쉬움. 구체적이고 정량적인 실적 서프라이즈 데이터가 없는 단순 의견성 기사는 매수 금지 (HOLD 유지할 것)."
+  },
+  {
+    "id": "loss-002",
+    "ticker": "NVDA",
+    "headline": "Nvidia options imply huge swing ahead of highly anticipated quarterly earnings",
+    "summary": "Options market pricing 8% move ahead of earnings announcement with high retail hype.",
+    "ai_reason": "실적 발표를 앞두고 옵션 변동성 및 폭발적 시장 관심 반영으로 선제 진입",
+    "action": "BUY",
+    "pnl_usd": -7.50,
+    "pnl_pct": -5.3,
+    "lesson_learned": "실적 발표 직전의 단순 '기대감(Anticipation)'이나 '옵션 과열' 기사는 선반영(Priced-in)의 전형. 실적 발표 직후 차익 실현 매물 폭탄으로 급락하므로 실적 발표 전 기대감 기사는 무조건 HOLD할 것."
+  },
+  {
+    "id": "loss-003",
+    "ticker": "ORCL",
+    "headline": "Oracle (ORCL): Can Rival Clouds Become Its Best Database Sales Channel?",
+    "summary": "Discussions on cloud partnerships and rivalry database channels.",
+    "ai_reason": "클라우드 데이터베이스 확장 및 잠재적 파트너십 기대",
+    "action": "BUY",
+    "pnl_usd": -3.00,
+    "pnl_pct": -2.3,
+    "lesson_learned": "물음표(?)로 끝나는 추측성/의문형 기사나 '잠재력'을 논하는 단순 분석글은 확실한 수주/매출 팩트가 없어 뉴스 직후 주가 하락. 물음표 헤드라인은 매수 절대 금지."
+  },
+  {
+    "id": "loss-004",
+    "ticker": "TSLA",
+    "headline": "Tesla Robotaxi Day excitement builds as Wall Street debates autonomous timeline",
+    "summary": "Speculation mounts ahead of Robotaxi unveiling event.",
+    "ai_reason": "로보택시 공개 행사에 대한 시장의 뜨거운 관심과 기대감",
+    "action": "BUY",
+    "pnl_usd": -12.40,
+    "pnl_pct": -6.1,
+    "lesson_learned": "'소문에 사고 뉴스에 팔아라(Buy the rumor, sell the news)'의 전형적 사례. 이벤트 당일 직전 기대감으로 주가가 이미 상승한 상태에서는 발표 직후 세력의 대량 매도 폭탄이 쏟아짐. 이벤트 당일 기대감 뉴스는 HOLD 처리할 것."
+  },
+  {
+    "id": "loss-005",
+    "ticker": "LLY",
+    "headline": "Eli Lilly weight-loss drug demand continues strong pace according to recent survey",
+    "summary": "Market survey shows obesity drug market growing steadily.",
+    "ai_reason": "비만치료제 지속 성장 서베이 결과 호재로 판단",
+    "action": "BUY",
+    "pnl_usd": -4.80,
+    "pnl_pct": -2.8,
+    "lesson_learned": "이미 온 시장이 다 아는 공공연한 호재(비만약 인기 지속 등)는 신규 모멘텀이 될 수 없으며, 단기 고점에서 진입 시 손실 발생. 신규 FDA 승인이나 깜짝 임상 성공 같은 '새로운 충격'이 아니면 진입하지 말 것."
+  }
+]
