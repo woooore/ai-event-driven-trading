@@ -362,12 +362,146 @@
 
     .tag-buy {
       background: rgba(16, 185, 129, 0.2);
-      color: var(--accent-green);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
     }
 
     .tag-sell {
       background: rgba(239, 68, 68, 0.2);
       color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .tag-take-profit {
+      background: rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .tag-stop-loss {
+      background: rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .tag-emergency {
+      background: rgba(220, 38, 38, 0.35);
+      color: #fca5a5;
+      border: 1px solid rgba(220, 38, 38, 0.6);
+      animation: pulse 1.5s infinite;
+    }
+
+    /* TICKER TRADE JOURNEY GRID */
+    .ticker-journey-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 18px;
+      margin-top: 14px;
+    }
+
+    .ticker-journey-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .ticker-journey-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: var(--border-highlight);
+    }
+
+    .journey-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      margin-bottom: 12px;
+    }
+
+    .journey-title {
+      font-weight: 700;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .journey-timeline {
+      position: relative;
+      padding-left: 20px;
+      margin-left: 6px;
+      border-left: 2px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .journey-event {
+      position: relative;
+    }
+
+    .journey-dot {
+      position: absolute;
+      left: -27px;
+      top: 3px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4b5563;
+      border: 2px solid var(--bg-card);
+    }
+
+    .dot-buy {
+      background: var(--accent-green);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+    }
+
+    .dot-sell-profit {
+      background: #34d399;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+    }
+
+    .dot-sell-loss {
+      background: #ef4444;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    }
+
+    .journey-event-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      margin-bottom: 2px;
+    }
+
+    .journey-event-desc {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .journey-event-reason {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+
+    .journey-summary {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
     }
 
     .log-time {
@@ -563,6 +697,23 @@
           <div class="empty-state-icon">⏳</div>
           <p style="font-size: 13px;">체결된 거래 내역이 없습니다.</p>
         </div>
+    </div>
+
+    <!-- BOTTOM: TICKER-BY-TICKER TRADE JOURNEY -->
+    <div class="section-card" style="margin-top: 24px;">
+      <div class="section-header">
+        <div class="section-title">
+          <span>📊 종목별 매매 히스토리 & 타임라인 (TICKER TRADE JOURNEY)</span>
+          <span id="badge-ticker-journey-count" class="badge" style="background: rgba(6,182,212,0.2); color: #67e8f9; font-size: 11px;">0개 종목</span>
+        </div>
+        <span style="font-size: 12px; color: var(--text-muted);">종목별 매수 시점 → 매도 시점(수익률) 누적 타임라인</span>
+      </div>
+      <div id="ticker-journey-grid" class="ticker-journey-grid">
+        <!-- DYNAMIC TICKER JOURNEY CARDS -->
+      </div>
+      <div id="ticker-journey-empty" class="empty-state">
+        <div class="empty-state-icon">📈</div>
+        <p style="font-size: 13px;">체결된 종목별 매매 타임라인이 아직 없습니다.</p>
       </div>
     </div>
   </div>
@@ -585,6 +736,13 @@
       return `${sign}${n.toFixed(2)}%`;
     }
 
+    // 한국 표준시 (KST) 포맷 변환
+    function formatTimeKst(isoStr) {
+      if (!isoStr) return '';
+      const clean = isoStr.replace('T', ' ');
+      return clean.length >= 19 ? clean.substring(0, 19) + ' (KST)' : clean + ' (KST)';
+    }
+
     async function fetchDashboard() {
       try {
         const res = await fetch(API_URL);
@@ -597,6 +755,8 @@
     }
 
     function updateUI(data) {
+      const rate = data.usdKrwRate || 1350.0;
+
       // 1. 메트릭 카드 업데이트
       document.getElementById('val-total-asset-krw').textContent = formatKrw(data.totalAssetKrw);
       document.getElementById('val-total-asset-usd').textContent = formatUsd(data.totalAssetUsd);
@@ -637,7 +797,7 @@
             <tr>
               <td>
                 <span class="ticker-badge">${p.ticker}</span>
-                <span class="company-name">${p.stockName}</span>
+                <span class="company-name">${p.stockName || p.ticker}</span>
               </td>
               <td class="number-mono">${p.quantity}주</td>
               <td class="number-mono">${formatUsd(p.buyPrice)}</td>
@@ -647,8 +807,8 @@
                 <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${formatUsd(p.unrealizedPnl)}</div>
               </td>
               <td>
-                <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">TP: ${formatUsd(p.takeProfitPrice)}</div>
-                <div style="font-size: 11px; color: var(--accent-red); font-family: var(--font-mono);">SL: ${formatUsd(p.stopLossPrice)}</div>
+                <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">익절: ${formatUsd(p.takeProfitPrice)}</div>
+                <div style="font-size: 11px; color: var(--accent-red); font-family: var(--font-mono);">손절: ${formatUsd(p.stopLossPrice)}</div>
               </td>
               <td>
                 <button class="btn-sell" onclick="sellStock('${p.ticker}')">긴급매도</button>
@@ -658,7 +818,7 @@
         }).join('');
       }
 
-      // 3. 체결 히스토리 로그 업데이트
+      // 3. 체결 히스토리 로그 업데이트 (한국어 라벨 및 KST 시간)
       const logs = data.tradeLogs || [];
       const logContainer = document.getElementById('logs-container');
       const emptyLogs = document.getElementById('logs-empty');
@@ -670,17 +830,31 @@
         emptyLogs.style.display = 'none';
         logContainer.innerHTML = logs.map(l => {
           const isBuy = l.action === 'BUY';
-          const tagClass = isBuy ? 'tag-buy' : 'tag-sell';
-          const timeFormatted = l.timestamp ? l.timestamp.replace('T', ' ').substring(5, 19) : '';
+          let tagClass = 'tag-buy';
+          let tagLabel = l.actionLabel || '매수';
+
+          if (!isBuy) {
+            if (l.actionLabel && l.actionLabel.includes('긴급')) {
+              tagClass = 'tag-emergency';
+            } else if ((l.realizedPnl || 0) >= 0) {
+              tagClass = 'tag-take-profit';
+            } else {
+              tagClass = 'tag-stop-loss';
+            }
+          }
+
+          const timeFormatted = formatTimeKst(l.timestamp);
+          const priceKrw = formatKrw(l.price * rate);
+
           return `
             <div class="log-item">
               <div class="log-header">
-                <span class="action-tag ${tagClass}">${l.action} ${l.ticker}</span>
+                <span class="action-tag ${tagClass}">${tagLabel} (${l.ticker})</span>
                 <span class="log-time">${timeFormatted}</span>
               </div>
               <div class="log-price-info">
-                <span>${l.quantity}주 @ ${formatUsd(l.price)}</span>
-                ${!isBuy ? `<span class="${l.profitRate >= 0 ? 'profit-positive' : 'profit-negative'}" style="margin-left: 8px;">(${formatPct(l.profitRate)})</span>` : ''}
+                <span>${l.stockName || l.ticker} ${l.quantity}주 @ ${formatUsd(l.price)} (${priceKrw})</span>
+                ${!isBuy ? `<span class="${(l.realizedPnl || 0) >= 0 ? 'profit-positive' : 'profit-negative'}" style="margin-left: 8px;">(${formatPct(l.profitRate)} / ${formatUsd(l.realizedPnl)})</span>` : ''}
               </div>
               <div class="log-reason">${l.reason || 'AI 시그널 주문 체결'}</div>
             </div>
@@ -688,7 +862,130 @@
         }).join('');
       }
 
+      // 4. 종목별 매매 타임라인 렌더링
+      renderTickerJourneys(data);
+
       document.getElementById('last-updated-time').textContent = '동기화: ' + new Date().toLocaleTimeString('ko-KR');
+    }
+
+    // 종목별 매매 히스토리 & 타임라인 렌더링 함수
+    function renderTickerJourneys(data) {
+      const logs = data.tradeLogs || [];
+      const positions = data.positions || [];
+      const container = document.getElementById('ticker-journey-grid');
+      const emptyEl = document.getElementById('ticker-journey-empty');
+      const countBadge = document.getElementById('badge-ticker-journey-count');
+      const rate = data.usdKrwRate || 1350.0;
+
+      const byTicker = {};
+
+      // 1. 현재 보유 중인 종목 먼저 등록
+      positions.forEach(p => {
+        const t = p.ticker.toUpperCase();
+        if (!byTicker[t]) {
+          byTicker[t] = {
+            ticker: t,
+            stockName: p.stockName || t,
+            activePosition: p,
+            logs: []
+          };
+        } else {
+          byTicker[t].activePosition = p;
+        }
+      });
+
+      // 2. 체결 히스토리 로그 등록
+      logs.forEach(l => {
+        const t = l.ticker.toUpperCase();
+        if (!byTicker[t]) {
+          byTicker[t] = {
+            ticker: t,
+            stockName: l.stockName || t,
+            activePosition: null,
+            logs: []
+          };
+        }
+        byTicker[t].logs.push(l);
+      });
+
+      const tickers = Object.keys(byTicker);
+      countBadge.textContent = `${tickers.length}개 종목`;
+
+      if (tickers.length === 0) {
+        container.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      container.innerHTML = tickers.map(t => {
+        const info = byTicker[t];
+        const stockName = info.stockName;
+        // 과거순으로 정렬 (매수 -> 매도 순으로 타임라인 출력)
+        const sortedLogs = [...info.logs].reverse();
+
+        let totalPnl = 0;
+        info.logs.forEach(l => {
+          if (l.action === 'SELL' && l.realizedPnl) {
+            totalPnl += l.realizedPnl;
+          }
+        });
+
+        const isHolding = !!info.activePosition;
+        const statusBadge = isHolding
+          ? `<span class="badge" style="background: rgba(16,185,129,0.18); color: #34d399; font-size: 11px;">📌 보유 중 (${info.activePosition.quantity}주 @ ${formatUsd(info.activePosition.buyPrice)})</span>`
+          : `<span class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-muted); font-size: 11px;">✅ 매매 청산 완료</span>`;
+
+        const stepsHtml = sortedLogs.map(l => {
+          const isBuy = l.action === 'BUY';
+          const isProfit = (l.realizedPnl || 0) >= 0;
+          const dotClass = isBuy ? 'dot-buy' : (isProfit ? 'dot-sell-profit' : 'dot-sell-loss');
+          const actionText = l.actionLabel || (isBuy ? '매수 체결' : '매도 체결');
+          const timeText = formatTimeKst(l.timestamp);
+          const pnlText = !isBuy
+            ? `<span class="${isProfit ? 'profit-positive' : 'profit-negative'}" style="margin-left: 6px;">[${formatPct(l.profitRate)} / ${formatUsd(l.realizedPnl)}]</span>`
+            : '';
+
+          return `
+            <div class="journey-event">
+              <div class="journey-dot ${dotClass}"></div>
+              <div class="journey-event-time">${timeText}</div>
+              <div class="journey-event-desc">
+                <span style="color: ${isBuy ? '#34d399' : (isProfit ? '#60a5fa' : '#f87171')};">
+                  ${isBuy ? '🟢' : (isProfit ? '🎯' : '🛡️')} ${actionText}
+                </span>
+                <span>${l.quantity}주 @ ${formatUsd(l.price)}</span>
+                ${pnlText}
+              </div>
+              <div class="journey-event-reason">${l.reason || ''}</div>
+            </div>
+          `;
+        }).join('');
+
+        const pnlSummaryClass = totalPnl >= 0 ? 'profit-positive' : 'profit-negative';
+        const pnlSign = totalPnl >= 0 ? '+' : '';
+
+        return `
+          <div class="ticker-journey-card">
+            <div class="journey-header">
+              <div class="journey-title">
+                <span class="ticker-badge" style="font-size: 12px;">${t}</span>
+                <span>${stockName}</span>
+              </div>
+              ${statusBadge}
+            </div>
+            <div class="journey-timeline">
+              ${stepsHtml || '<div style="font-size: 12px; color: var(--text-muted);">기록된 매매 이벤트가 없습니다.</div>'}
+            </div>
+            <div class="journey-summary">
+              <span style="color: var(--text-muted);">종목 누적 실현손익</span>
+              <span class="${pnlSummaryClass}" style="font-weight: 700;">
+                ${pnlSign}${formatUsd(totalPnl)} (${pnlSign}${formatKrw(totalPnl * rate)})
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     // 수동 긴급 매도 함수

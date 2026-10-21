@@ -330,7 +330,8 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         f"   - order_price: 현재 시장 가격 (${current_price}) 기준\n"
         "   - take_profit: 약 +3.0% 수준의 빠른 단기 목표 익절가\n"
         "   - stop_loss: 약 -6.5% 수준의 안전 손절 기준가\n"
-        f"   - exchange: '{exchange}'"
+        f"   - exchange: '{exchange}'\n"
+        "8. reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 명확히 작성하라. (절대 영어가 아닌 한국어로 작성할 것)"
     )
 
     user_prompt = f"""
