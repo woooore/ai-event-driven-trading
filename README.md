@@ -1,10 +1,10 @@
-# 📈 AI Event-Driven US Stock Trading System
+# AI Event-Driven US Stock Trading System
 
-> **실시간 금융 데이터 피드와 LLM(GPT-4o-mini) 퀀트 분석, Kafka 비동기 파이프라인을 결합한 미국 주식(해외주식) 이벤트 드리븐 자동 매매 시스템**
+> **실시간 금융 데이터 피드와 LLM(GPT-4o-mini) 퀀트 분석, Kafka 비동기 파이프라인을 결합한 해외주식 이벤트 드리븐 자동 매매 시스템**
 
 ---
 
-## 📌 1. 프로젝트 개요 (Project Overview)
+## 1. 프로젝트 개요 (Project Overview)
 
 본 프로젝트는 단순한 단일 스크립트 기반의 매매를 넘어, **대용량 이벤트 처리, 마이크로서비스(MSA) 분리, 시스템 신뢰성(동시성 제어 및 멱등성 보장, 장애 격리)**을 검증하기 위해 설계된 백엔드 트레이딩 플랫폼입니다.
 
@@ -50,7 +50,7 @@ flowchart LR
 
 ---
 
-## 💡 3. 핵심 엔지니어링 특징 (Key Engineering Highlights)
+## 3. 핵심 기술
 
 ### ① 실제 AI 에이전트 기반의 퀀트 의사결정 파이프라인
 - **실시간 데이터 취합**: `yfinance`와 Yahoo Finance 실시간 RSS를 통해 관심 종목의 현재가, 당일 등락률, 최신 뉴스를 실시간 파싱.
@@ -70,7 +70,7 @@ flowchart LR
 
 ---
 
-## 🛠️ 4. 기술 스택 (Tech Stack)
+## 4. 기술 스택
 
 | 영역 | 기술 스택 |
 | :--- | :--- |
@@ -81,9 +81,9 @@ flowchart LR
 
 ---
 
-## 🚀 5. 실행 및 테스트 방법 (Quick Start)
+## 5. 실행 및 테스트 방법 (Quick Start)
 
-### 🌟 옵션 A: 클라우드 서버 24시간 무중단 올인원 실행 (가장 추천)
+###  1. 클라우드 서버로 웹에 띄우기
 > 내 컴퓨터를 꺼도 클라우드(AWS, Oracle Cloud 등)에서 Kafka, Redis, Spring Boot, AI Worker, 웹 대시보드가 단 한 줄로 모두 실행됩니다.
 
 ```bash
@@ -103,7 +103,7 @@ docker-compose up -d --build
 
 ---
 
-### 💻 옵션 B: 로컬 개발 환경 분리 실행 (IntelliJ + 로컬 Python)
+### 2. 로컬 개발 분리
 
 #### Step 1. 인프라 실행 (Docker)
 ```bash
@@ -130,7 +130,7 @@ cd ai-signal-worker
 
 ---
 
-## 📋 6. Kafka 이벤트 메시지 스펙 (`stock-signals`)
+## 6. Kafka 메세지 스택
 
 ```json
 {
