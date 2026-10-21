@@ -2,6 +2,8 @@
 FROM eclipse-temurin:17-jdk-alpine AS builder
 WORKDIR /app
 
+ENV GRADLE_OPTS="-Xmx256m -XX:MaxMetaspaceSize=128m"
+
 COPY gradlew .
 COPY gradle gradle
 COPY build.gradle .

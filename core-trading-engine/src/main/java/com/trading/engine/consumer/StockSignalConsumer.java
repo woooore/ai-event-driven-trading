@@ -5,20 +5,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trading.engine.dto.StockSignalDto;
 import com.trading.engine.service.KisOrderService;
 import com.trading.engine.service.PortfolioManager;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBucket;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class StockSignalConsumer {
 
     private final ObjectMapper objectMapper;
@@ -26,7 +27,20 @@ public class StockSignalConsumer {
     private final PortfolioManager portfolioManager;
     private final RedissonClient redissonClient;
 
+    // Redisson 연결 불가 시 안전한 인메모리 쿨다운 폴백
+    private final ConcurrentHashMap<String, Instant> inMemoryCooldown = new ConcurrentHashMap<>();
     private static final long COOLDOWN_SECONDS = 60;
+
+    public StockSignalConsumer(
+            ObjectMapper objectMapper,
+            KisOrderService kisOrderService,
+            PortfolioManager portfolioManager,
+            @Autowired(required = false) RedissonClient redissonClient) {
+        this.objectMapper = objectMapper;
+        this.kisOrderService = kisOrderService;
+        this.portfolioManager = portfolioManager;
+        this.redissonClient = redissonClient;
+    }
 
     @KafkaListener(topics = "stock-signals", groupId = "trading-engine-group")
     public void consumeSignal(String message) {
@@ -53,65 +67,77 @@ public class StockSignalConsumer {
                     return;
                 }
 
-                RLock sellLock = redissonClient.getLock("lock:order:" + ticker);
-                boolean acquired = sellLock.tryLock(2, 10, TimeUnit.SECONDS);
+                if (redissonClient != null) {
+                    RLock sellLock = redissonClient.getLock("lock:order:" + ticker);
+                    boolean acquired = sellLock.tryLock(2, 10, TimeUnit.SECONDS);
+                    if (!acquired) {
+                        log.warn(">> [Redis 분산 락] {} 매도 주문 처리 중 다른 스레드가 점유 중입니다. 스킵.", ticker);
+                        return;
+                    }
+                    try {
+                        log.warn(">> 🚨 [AI 악재 긴급 매도] {} 보유 전량 매도 실행! 사유: {}", ticker, signal.getReason());
+                        kisOrderService.executeOverseasOrder(signal);
+                    } finally {
+                        if (sellLock.isHeldByCurrentThread()) {
+                            sellLock.unlock();
+                        }
+                    }
+                } else {
+                    log.warn(">> 🚨 [AI 악재 긴급 매도 (인메모리 모드)] {} 보유 전량 매도 실행! 사유: {}", ticker, signal.getReason());
+                    kisOrderService.executeOverseasOrder(signal);
+                }
+                return;
+            }
+
+            // 3. BUY 시그널: 퀀트 기술적 지표 필터링 (2차 안전장치)
+            if (signal.getRsi() != null && signal.getRsi() >= 70.0) {
+                log.warn(">> 🛡️ [퀀트 기술적 필터 차단] {} 매수 스킵: RSI({} >= 70.0) 단기 과매수 과열! 세력 차익실현 물량받이 위험 차단. 사유: {}",
+                        ticker, String.format("%.1f", signal.getRsi()), signal.getReason());
+                return;
+            }
+
+            if (signal.getMaDisparity() != null && signal.getMaDisparity() >= 110.0) {
+                log.warn(">> 🛡️ [퀀트 기술적 필터 차단] {} 매수 스킵: 20일 이격도({}% >= 110%) 급등 과열! 사유: {}",
+                        ticker, String.format("%.1f", signal.getMaDisparity()), signal.getReason());
+                return;
+            }
+
+            // 4. Redis 분산 락 또는 인메모리 락 기반 매수 주문 실행
+            if (redissonClient != null) {
+                RLock buyLock = redissonClient.getLock("lock:order:" + ticker);
+                boolean acquired = buyLock.tryLock(2, 15, TimeUnit.SECONDS);
                 if (!acquired) {
-                    log.warn(">> [Redis 분산 락] {} 매도 주문 처리 중 다른 스레드가 점유 중입니다. 스킵.", ticker);
+                    log.warn(">> [Redis 분산 락 획득 실패] {} 종목 주문이 이미 진행 중입니다. (스킵)", ticker);
                     return;
                 }
+
                 try {
-                    log.warn(">> 🚨 [AI 악재 감지 긴급 매도 실행] 보유 종목 {}에 치명적 악재 감지! 전량 매도 실행. 사유: {}",
-                            ticker, signal.getReason());
+                    RBucket<String> cooldownBucket = redissonClient.getBucket("cooldown:order:" + ticker);
+                    if (cooldownBucket.isExists()) {
+                        log.warn(">> ⏱️ [Redis 분산 쿨다운 스킵] {} 종목은 최근 주문 후 쿨다운(60초) 중입니다.", ticker);
+                        return;
+                    }
+
                     kisOrderService.executeOverseasOrder(signal);
+                    cooldownBucket.set("ORDERED", Duration.ofSeconds(COOLDOWN_SECONDS));
+                    log.info(">> 🔒 [Redis 분산 락 & 쿨다운 등록] {} 종목 주문 체결 및 60초 쿨다운 적용 완료.", ticker);
                 } finally {
-                    if (sellLock.isHeldByCurrentThread()) {
-                        sellLock.unlock();
+                    if (buyLock.isHeldByCurrentThread()) {
+                        buyLock.unlock();
                     }
                 }
-                return;
-            }
-
-            // 3. BUY 시그널: Redis 분산 락 및 퀀트 기술적 지표 필터링
-            RLock buyLock = redissonClient.getLock("lock:order:" + ticker);
-            boolean acquired = buyLock.tryLock(2, 15, TimeUnit.SECONDS);
-            if (!acquired) {
-                log.warn(">> [Redis 분산 락 획득 실패] {} 종목 주문이 이미 진행 중입니다. (스킵)", ticker);
-                return;
-            }
-
-            try {
-                // (1) Redis 분산 쿨다운 검사
-                RBucket<String> cooldownBucket = redissonClient.getBucket("cooldown:order:" + ticker);
-                if (cooldownBucket.isExists()) {
-                    log.warn(">> ⏱️ [Redis 분산 쿨다운 스킵] {} 종목은 최근 주문 후 쿨다운(60초) 중입니다.", ticker);
+            } else {
+                // 인메모리 폴백 모드
+                Instant now = Instant.now();
+                Instant lastTime = inMemoryCooldown.get(ticker);
+                if (lastTime != null && now.isBefore(lastTime.plusSeconds(COOLDOWN_SECONDS))) {
+                    log.warn(">> ⏱️ [인메모리 쿨다운 스킵] {} 종목 최근 주문 후 쿨다운 중입니다.", ticker);
                     return;
                 }
 
-                // (2) 퀀트 기술적 지표 2차 안전장치: RSI >= 70 (과매수 단기 고점 필터링)
-                if (signal.getRsi() != null && signal.getRsi() >= 70.0) {
-                    log.warn(">> 🛡️ [퀀트 기술적 필터 차단] {} 매수 스킵: RSI({} >= 70.0) 단기 과매수 과열! 세력 차익실현 물량받이 위험 차단. 사유: {}",
-                            ticker, String.format("%.1f", signal.getRsi()), signal.getReason());
-                    return;
-                }
-
-                // (3) 이동평균선 이격도 2차 안전장치: 이격도 >= 110% (단기 급등 과열)
-                if (signal.getMaDisparity() != null && signal.getMaDisparity() >= 110.0) {
-                    log.warn(">> 🛡️ [퀀트 기술적 필터 차단] {} 매수 스킵: 20일 이격도({}% >= 110%) 급등 과열! 사유: {}",
-                            ticker, String.format("%.1f", signal.getMaDisparity()), signal.getReason());
-                    return;
-                }
-
-                // (4) 해외주식 매수 주문 실행
                 kisOrderService.executeOverseasOrder(signal);
-
-                // (5) Redis 분산 쿨다운 설정 (60초 TTL)
-                cooldownBucket.set("ORDERED", Duration.ofSeconds(COOLDOWN_SECONDS));
-                log.info(">> 🔒 [Redis 분산 락 & 쿨다운 등록] {} 종목 주문 체결 및 60초 쿨다운 적용 완료.", ticker);
-
-            } finally {
-                if (buyLock.isHeldByCurrentThread()) {
-                    buyLock.unlock();
-                }
+                inMemoryCooldown.put(ticker, now);
+                log.info(">> 🔒 [인메모리 쿨다운 등록] {} 종목 주문 체결 및 60초 쿨다운 적용 완료.", ticker);
             }
 
         } catch (JsonProcessingException e) {
