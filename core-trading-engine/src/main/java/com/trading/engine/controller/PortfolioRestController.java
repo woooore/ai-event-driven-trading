@@ -24,6 +24,15 @@ public class PortfolioRestController {
     }
 
     /**
+     * 포트폴리오 전체 초기화 (1,000만원 복원 및 모든 테스트 내역 클리어)
+     */
+    @PostMapping("/reset")
+    public ResponseEntity<Map<String, Object>> resetPortfolio() {
+        portfolioManager.resetPortfolio();
+        return ResponseEntity.ok(Map.of("success", true, "message", "포트폴리오가 초기 자본 ₩10,000,000 ($7,407.41)으로 원상 복구되었습니다."));
+    }
+
+    /**
      * 특정 보유 종목 수동 매도 (테스트 및 긴급 탈출용)
      */
     @PostMapping("/sell/{ticker}")

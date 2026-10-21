@@ -15,6 +15,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Locale;
 
@@ -29,14 +31,25 @@ public class PositionMonitorScheduler {
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${trading.take-profit-ratio:0.03}")
-    private double defaultTakeProfitRatio; // 기본 3% 상승 시 익절
+    private double defaultTakeProfitRatio; // 기본 목표선
+
+    @Value("${trading.trailing-activation-ratio:0.025}")
+    private double trailingActivationRatio; // +2.5% 수익 도달 시 트레일링 스탑 모드 가동
+
+    @Value("${trading.trailing-pullback-ratio:0.030}")
+    private double trailingPullbackRatio;   // 고점 대비 -3.0% 하락 시 추세 반전으로 익절 청산
 
     @Value("${trading.stop-loss-ratio:0.065}")
-    private double defaultStopLossRatio;   // 기본 6.5% 하락 시 손절
+    private double defaultStopLossRatio;   // 기본 6.5% 하락 시 안전 손절
+
+    @Value("${trading.max-hold-hours:48}")
+    private long maxHoldHours;              // 뉴스 모멘텀 유효기간 (48시간 경과 후 횡보 시 타임 컷)
+
+    private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     /**
      * 15초마다 보유 포지션의 실시간 현재가를 감시하고
-     * 목표 익절가 또는 손절가 도달 시 자동으로 매도 체결
+     * 트레일링 스탑, 타임 컷, 안전 손절 조건 검사 및 자동 체결
      */
     @Scheduled(fixedDelay = 15000)
     public void monitorPositions() {
@@ -56,21 +69,63 @@ public class PositionMonitorScheduler {
             pos.setCurrentPrice(livePrice);
             double profitRate = pos.getProfitRate();
 
-            // 1. 익절(Take-Profit) 조건 검사
-            if (livePrice >= pos.getTakeProfitPrice()) {
-                log.info(">> 🚀 [목표 익절 조건 달성] {} 현재가 ${} >= 익절목표가 ${} (수익률: +{:.2f}%)",
-                        ticker, String.format(Locale.US, "%.2f", livePrice),
-                        String.format(Locale.US, "%.2f", pos.getTakeProfitPrice()), profitRate);
-                portfolioManager.sellPosition(ticker, livePrice, "목표 수익률 달성 익절 매도 (+ " + String.format(Locale.US, "%.2f", profitRate) + "%)");
-                continue;
+            // 최고점 갱신 (트레일링 스탑 기준가)
+            if (pos.getHighestPrice() <= 0) {
+                pos.setHighestPrice(pos.getBuyPrice());
+            }
+            if (livePrice > pos.getHighestPrice()) {
+                pos.setHighestPrice(livePrice);
             }
 
-            // 2. 손절(Stop-Loss) 조건 검사
+            // 1. 트레일링 스탑 활성화 검사 (+2.5% 이상 수익 시 가동 시작)
+            if (!pos.isTrailingStopActive() && livePrice >= pos.getBuyPrice() * (1.0 + trailingActivationRatio)) {
+                pos.setTrailingStopActive(true);
+                double initialTrailingPrice = pos.getHighestPrice() * (1.0 - trailingPullbackRatio);
+                pos.setTrailingStopPrice(initialTrailingPrice);
+                log.info(">> 🎯 [트레일링 스탑 가동] {} 수익률 +{:.2f}% 달성! 고점 추적 익절 모드 진입 (최초 트레일링 기준선: ${})",
+                        ticker, profitRate, String.format(Locale.US, "%.2f", initialTrailingPrice));
+            }
+
+            // 2. 트레일링 스탑 익절 청산 검사 (고점 대비 -3.0% 되돌림 터치 시)
+            if (pos.isTrailingStopActive()) {
+                double updatedTrailingPrice = pos.getHighestPrice() * (1.0 - trailingPullbackRatio);
+                if (updatedTrailingPrice > pos.getTrailingStopPrice()) {
+                    pos.setTrailingStopPrice(updatedTrailingPrice);
+                }
+
+                if (livePrice <= pos.getTrailingStopPrice()) {
+                    log.info(">> 🚀 [트레일링 스탑 고점 추적 익절] {} 현재가 ${} <= 트레일링선 ${} (최고가 ${} 대비 -{:.1f}%, 최종수익률: +{:.2f}%)",
+                            ticker, String.format(Locale.US, "%.2f", livePrice),
+                            String.format(Locale.US, "%.2f", pos.getTrailingStopPrice()),
+                            String.format(Locale.US, "%.2f", pos.getHighestPrice()),
+                            trailingPullbackRatio * 100, profitRate);
+
+                    portfolioManager.sellPosition(ticker, livePrice,
+                            String.format(Locale.US, "고점 추적 트레일링 스탑 익절 (최고가 $%.2f 대비 -%.1f%% 되돌림 청산, 최종 수익률: +%.2f%%)",
+                                    pos.getHighestPrice(), trailingPullbackRatio * 100, profitRate));
+                    continue;
+                }
+            }
+
+            // 3. 타임 컷 (Time-Horizon Exit: 48시간 이상 보유 후 횡보 지속 시 자본 회전율 확보 매도)
+            if (pos.getBuyTime() != null) {
+                long hoursHeld = java.time.Duration.between(pos.getBuyTime(), LocalDateTime.now(KST_ZONE)).toHours();
+                if (hoursHeld >= maxHoldHours && Math.abs(profitRate) <= 1.5) {
+                    log.info(">> ⏱️ [타임 컷 모멘텀 소멸 청산] {} 보유시간 {}시간 경과 후 횡보(수익률 {:.2f}%). 현금 회전율 확보를 위해 매도.",
+                            ticker, hoursHeld, profitRate);
+                    portfolioManager.sellPosition(ticker, livePrice,
+                            String.format(Locale.US, "이벤트 모멘텀 소멸 타임 컷 (%d시간 보유 후 횡보 청산, 수익률: %+.2f%%)", hoursHeld, profitRate));
+                    continue;
+                }
+            }
+
+            // 4. 안전 손절(Hard Stop-Loss) 조건 검사 (-6.5% 하락 시 즉각 자본 보호 매도)
             if (livePrice <= pos.getStopLossPrice()) {
                 log.warn(">> ⚠️ [손절 기준선 터치] {} 현재가 ${} <= 손절가 ${} (손실률: {:.2f}%)",
                         ticker, String.format(Locale.US, "%.2f", livePrice),
                         String.format(Locale.US, "%.2f", pos.getStopLossPrice()), profitRate);
-                portfolioManager.sellPosition(ticker, livePrice, "손절선 이탈 방어 매도 (" + String.format(Locale.US, "%.2f", profitRate) + "%)");
+                portfolioManager.sellPosition(ticker, livePrice,
+                        String.format(Locale.US, "손절선 이탈 방어 매도 (손실률: %.2f%%)", profitRate));
             }
         }
     }

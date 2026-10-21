@@ -153,13 +153,15 @@ public class PortfolioManager {
                     .currentPrice(price)
                     .takeProfitPrice(targetTakeProfit)
                     .stopLossPrice(targetStopLoss)
+                    .highestPrice(price)
+                    .trailingStopActive(false)
+                    .trailingStopPrice(0.0)
                     .buyReason(signal.getReason())
                     .buyTime(nowKst)
                     .build();
             positions.put(ticker, newPos);
-            log.info(">> [신규 포지션 진입] {} {}주 매수 체결 @ ${} (익절목표가: ${}, 손절가: ${})",
+            log.info(">> [신규 포지션 진입] {} {}주 매수 체결 @ ${} (트레일링스탑 발동기준: +2.5%, 손절가: ${})",
                     koreanName, quantity, String.format(Locale.US, "%.2f", price),
-                    String.format(Locale.US, "%.2f", targetTakeProfit),
                     String.format(Locale.US, "%.2f", targetStopLoss));
         }
 
@@ -253,6 +255,28 @@ public class PortfolioManager {
 
     public boolean hasPosition(String ticker) {
         return positions.containsKey(ticker.toUpperCase());
+    }
+
+    /**
+     * 포트폴리오 전체 초기화 (원금 1,000만원 복원 및 보유 종목/체결 로그 초기화)
+     */
+    public synchronized void resetPortfolio() {
+        this.currentCashUsd = this.initialCashUsd;
+        this.cumulativeRealizedPnlUsd = 0.0;
+        this.positions.clear();
+        this.tradeLogs.clear();
+
+        if (redissonClient != null) {
+            try {
+                redissonClient.getBucket("portfolio:persisted_state").delete();
+            } catch (Exception ignored) {}
+        }
+        try {
+            Files.deleteIfExists(Path.of("portfolio_state_backup.json"));
+        } catch (Exception ignored) {}
+
+        persistState();
+        log.info(">> 🔄 [포트폴리오 전체 초기화 완료] 초기 자본 ₩10,000,000 ($7,407.41) 원상 복구 완료");
     }
 
     /**
