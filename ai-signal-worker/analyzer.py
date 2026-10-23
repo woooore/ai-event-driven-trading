@@ -377,7 +377,20 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         return None
 
 # 9. 중복 기사 캐시
-processed_news_hashes = set()
+# 9. 중복 기사 캐시 (해시와 함께 타임스탬프 기록 -> 4시간 경과 시 만료되어 주가/지표 변화 반영 재평가 가능)
+processed_news_cache: Dict[str, float] = {}
+current_scan_offset = 0
+
+def is_content_analyzed(content_hash: str, ttl_hours: float = 4.0) -> bool:
+    now = time.time()
+    if content_hash in processed_news_cache:
+        analyzed_time = processed_news_cache[content_hash]
+        if (now - analyzed_time) < (ttl_hours * 3600):
+            return True # 아직 TTL 기간 내에 분석된 동일 뉴스
+    return False
+
+def mark_content_analyzed(content_hash: str):
+    processed_news_cache[content_hash] = time.time()
 
 def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None):
     market_data = get_market_and_news(ticker, custom_news)
@@ -386,7 +399,7 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
 
     news_concat = "".join([n['title'] for n in market_data['news']])
     content_hash = hashlib.md5(f"{ticker}:{news_concat}".encode('utf-8')).hexdigest()
-    if content_hash in processed_news_hashes:
+    if is_content_analyzed(content_hash):
         return
 
     tech_info = f"RSI: {market_data['rsi']:.1f}" if market_data.get('rsi') else "RSI: N/A"
@@ -397,7 +410,7 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
     if not signal:
         return
 
-    processed_news_hashes.add(content_hash)
+    mark_content_analyzed(content_hash)
 
     print(f"   [AI 판단] 액션: {signal.action} | 확신도: {signal.confidence:.2f} | 감성: {signal.sentiment}")
     print(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
@@ -405,31 +418,47 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
 
     # BUY or SELL & 확신도 >= 0.70 일 때만 Kafka 전송
     if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.70:
-        payload = signal.model_dump_json()
-        producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
-        producer.flush()
-        print(f"   🚀 [시그널 발행 완료] {signal.action} {signal.ticker} -> Core Engine(1,000만원 포트폴리오) 전송 완료!")
+        try:
+            payload = signal.model_dump_json()
+            producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
+            producer.flush(timeout=5)
+            print(f"   🚀 [시그널 발행 완료] {signal.action} {signal.ticker} -> Core Engine(1,000만원 포트폴리오) 전송 완료!")
+        except Exception as ke:
+            print(f"   ⚠️ [Kafka 전송 오류]: {ke}")
     else:
         print(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
-# 10. 실시간 전체 시장 종합 속보 스캐너 (시총 50위 종목 순환 및 속보 감지)
-def scan_market_wide_news(max_tickers_per_batch: int = 15):
-    """미국 시총 상위 50대 기업의 실시간 헤드라인을 순환 스캔하여 속보 발생 종목을 AI로 즉시 분석"""
-    print(f">> [미국 시총 50위 유니버스 실시간 속보 스캔 중...]")
+# 10. 실시간 전체 시장 종합 속보 스캐너 (시총 50위 종목 10개씩 라운드로빈 순환)
+def scan_market_wide_news(batch_size: int = 10):
+    """미국 시총 상위 50대 기업의 실시간 헤드라인을 10개씩 라운드로빈 회전하며 24시간 실시간 감시"""
+    global current_scan_offset
     all_tickers = list(TOP_50_US_STOCKS.keys())
-    
-    target_batch = all_tickers[:max_tickers_per_batch]
-    
+    total_tickers = len(all_tickers)
+
+    # 50개 종목을 10개씩 회전(Rolling)하면서 순환
+    start_idx = current_scan_offset % total_tickers
+    end_idx = start_idx + batch_size
+
+    if end_idx <= total_tickers:
+        target_batch = all_tickers[start_idx:end_idx]
+    else:
+        target_batch = all_tickers[start_idx:] + all_tickers[:end_idx % total_tickers]
+
+    current_scan_offset = (current_scan_offset + batch_size) % total_tickers
+
+    print(f"\n>> 🌐 [미국 시총 50위 유니버스 라운드로빈 스캔 ({start_idx + 1}~{min(start_idx + batch_size, total_tickers)}/{total_tickers}번째 종목)]")
+    print(f"   스캔 대상: {', '.join(target_batch)}")
+
     analyzed_count = 0
     for ticker in target_batch:
         try:
             market_data = get_market_and_news(ticker)
             if not market_data or not market_data['news']:
                 continue
-            
+
             news_concat = "".join([n['title'] for n in market_data['news']])
             content_hash = hashlib.md5(f"{ticker}:{news_concat}".encode('utf-8')).hexdigest()
-            if content_hash in processed_news_hashes:
+            if is_content_analyzed(content_hash):
                 continue
 
             analyzed_count += 1
@@ -441,26 +470,29 @@ def scan_market_wide_news(max_tickers_per_batch: int = 15):
             if not signal:
                 continue
 
-            processed_news_hashes.add(content_hash)
+            mark_content_analyzed(content_hash)
 
             print(f"   [AI 판단] {signal.action} | 확신도: {signal.confidence:.2f} | 감성: {signal.sentiment}")
             print(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
             print(f"   [투자 근거]: {signal.reason}")
 
             if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.70:
-                payload = signal.model_dump_json()
-                producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
-                producer.flush()
-                print(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} -> Core Engine 전송 완료!")
+                try:
+                    payload = signal.model_dump_json()
+                    producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
+                    producer.flush(timeout=5)
+                    print(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} -> Core Engine 전송 완료!")
+                except Exception as ke:
+                    print(f"   ⚠️ [Kafka 전송 오류]: {ke}")
             else:
                 print(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
-            time.sleep(1) # API 보호
+            time.sleep(1) # API 레이트리밋 보호
         except Exception as e:
             print(f"[{ticker} 스캔 오류] {e}")
 
     if analyzed_count == 0:
-        print(">> [스캔 결과] 기존 분석 완료된 뉴스 외 신규 속보 없음 (다음 주기 대기)")
+        print(f">> [스캔 결과] 해당 배치({len(target_batch)}개 종목)는 기존 분석 유효 범위 내. 다음 주기에 다음 배치 종목 스캔 대기")
 
 # 11. 인텔리제이 연동 테스트용 가상 시그널 발송
 def fire_sample_buy_signal(target_ticker: str = "NVDA"):
