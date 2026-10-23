@@ -130,9 +130,11 @@ public class ChartRestController {
                             double dayLow = meta.path("regularMarketDayLow").asDouble(currentPrice);
                             long volume = meta.path("regularMarketVolume").asLong(0L);
 
-                            // 기술적 보조지표 계산 (14일 RSI, 20일 MA 이격도)
+                            // 기술적 보조지표 계산 (14일 RSI, 20일 MA 이격도, 볼린저 밴드 %B, MACD)
                             double rsi = calculateRsi(closePrices, 14);
                             double disparity = calculateDisparity(closePrices, 20);
+                            Map<String, Double> bollinger = calculateBollinger(closePrices, 20, 2.0);
+                            Map<String, Object> macd = calculateMacd(closePrices);
 
                             Map<String, Object> res = new LinkedHashMap<>();
                             res.put("success", true);
@@ -148,6 +150,8 @@ public class ChartRestController {
                             res.put("volume", volume);
                             res.put("rsi", rsi);
                             res.put("maDisparity", disparity);
+                            res.put("bollinger", bollinger);
+                            res.put("macd", macd);
                             res.put("candles", candles);
 
                             // 현재 포트폴리오에 보유 중인지 확인하여 매수가/익절선/손절선 오버레이 정보 첨부
@@ -221,6 +225,78 @@ public class ChartRestController {
     }
 
     /**
+     * 볼린저 밴드 (20일, 2.0 표준편차) 계산
+     */
+    private Map<String, Double> calculateBollinger(List<Double> closes, int period, double k) {
+        if (closes == null || closes.size() < period) {
+            return Map.of("upper", 0.0, "middle", 0.0, "lower", 0.0, "percentB", 0.5);
+        }
+        double sum = 0.0;
+        for (int i = closes.size() - period; i < closes.size(); i++) sum += closes.get(i);
+        double ma = sum / period;
+        double varSum = 0.0;
+        for (int i = closes.size() - period; i < closes.size(); i++) {
+            varSum += Math.pow(closes.get(i) - ma, 2);
+        }
+        double std = Math.sqrt(varSum / period);
+        double upper = ma + (k * std);
+        double lower = ma - (k * std);
+        double current = closes.get(closes.size() - 1);
+        double width = upper - lower;
+        double pb = width > 0 ? (current - lower) / width : 0.5;
+
+        Map<String, Double> bb = new LinkedHashMap<>();
+        bb.put("upper", Math.round(upper * 100.0) / 100.0);
+        bb.put("middle", Math.round(ma * 100.0) / 100.0);
+        bb.put("lower", Math.round(lower * 100.0) / 100.0);
+        bb.put("percentB", Math.round(pb * 100.0) / 100.0);
+        return bb;
+    }
+
+    /**
+     * MACD (12, 26, 9) 및 골든크로스 계산
+     */
+    private Map<String, Object> calculateMacd(List<Double> closes) {
+        if (closes == null || closes.size() < 26) {
+            return Map.of("macd", 0.0, "signal", 0.0, "hist", 0.0, "isGoldenCross", false);
+        }
+        List<Double> ema12 = calculateEma(closes, 12);
+        List<Double> ema26 = calculateEma(closes, 26);
+        List<Double> macdLine = new ArrayList<>();
+        for (int i = 0; i < closes.size(); i++) {
+            macdLine.add(ema12.get(i) - ema26.get(i));
+        }
+        List<Double> signalLine = calculateEma(macdLine, 9);
+        int lastIdx = closes.size() - 1;
+        double curMacd = macdLine.get(lastIdx);
+        double curSignal = signalLine.get(lastIdx);
+        double curHist = curMacd - curSignal;
+        boolean golden = false;
+        if (lastIdx > 0) {
+            double prevHist = macdLine.get(lastIdx - 1) - signalLine.get(lastIdx - 1);
+            golden = (curHist > 0 && prevHist <= 0);
+        }
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("macd", Math.round(curMacd * 100.0) / 100.0);
+        res.put("signal", Math.round(curSignal * 100.0) / 100.0);
+        res.put("hist", Math.round(curHist * 100.0) / 100.0);
+        res.put("isGoldenCross", golden);
+        return res;
+    }
+
+    private List<Double> calculateEma(List<Double> data, int period) {
+        List<Double> ema = new ArrayList<>(data.size());
+        double alpha = 2.0 / (period + 1.0);
+        ema.add(data.get(0));
+        for (int i = 1; i < data.size(); i++) {
+            double val = (alpha * data.get(i)) + ((1.0 - alpha) * ema.get(i - 1));
+            ema.add(val);
+        }
+        return ema;
+    }
+
+    /**
      * 네트워크 오류 시 안전하게 제공하는 기간별(range) 동적 폴백 캔들
      * 1mo: ~22개, 3mo: ~65개, 6mo: ~130개, 1y: ~252개, 2y: ~504개
      */
@@ -290,6 +366,8 @@ public class ChartRestController {
 
         double rsi = calculateRsi(closePrices, 14);
         double disparity = calculateDisparity(closePrices, 20);
+        Map<String, Double> bollinger = calculateBollinger(closePrices, 20, 2.0);
+        Map<String, Object> macd = calculateMacd(closePrices);
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("success", true);
@@ -305,6 +383,8 @@ public class ChartRestController {
         res.put("volume", 38500000L);
         res.put("rsi", rsi);
         res.put("maDisparity", disparity);
+        res.put("bollinger", bollinger);
+        res.put("macd", macd);
         res.put("candles", candles);
 
         Position pos = portfolioManager.getPosition(symbol);

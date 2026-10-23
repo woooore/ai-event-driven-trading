@@ -2140,8 +2140,21 @@
         const dropFromHigh = data.fiftyTwoWeekHigh > 0 ? (((data.currentPrice - data.fiftyTwoWeekHigh) / data.fiftyTwoWeekHigh) * 100).toFixed(1) : '0';
         document.getElementById('chart-hero-52w-sub').textContent = `52주 최고가 대비 ${dropFromHigh}%`;
 
-        document.getElementById('chart-hero-quant').textContent = `RSI ${data.rsi} | 이격도 ${data.maDisparity}%`;
-        const quantStatus = data.rsi >= 70 ? '⚠️ 과매수 위험 (RSI 70 이상)' : (data.rsi <= 35 ? '💎 과매도 저평가 (RSI 35 이하)' : '✅ 안정 매수 적정권');
+        let quantDetail = `RSI ${data.rsi} | 이격도 ${data.maDisparity}%`;
+        if (data.bollinger && data.macd) {
+          quantDetail += ` | BB %B ${data.bollinger.percentB}`;
+          if (data.macd.isGoldenCross) quantDetail += ` ★골든크로스`;
+        }
+        document.getElementById('chart-hero-quant').textContent = quantDetail;
+
+        let quantStatus = '✅ 안정 매수 적정권';
+        if (data.rsi >= 70 || (data.bollinger && data.bollinger.percentB >= 0.95)) {
+          quantStatus = '⚠️ 과매수/볼린저 상단 과열 (추격 매수 금지)';
+        } else if (data.rsi <= 35 || (data.bollinger && data.bollinger.percentB <= 0.20)) {
+          quantStatus = '💎 과매도 저평가/하단 밴드 지지 반등권';
+        } else if (data.macd && data.macd.isGoldenCross) {
+          quantStatus = '🚀 MACD 골든크로스 상승 전환 신호 포착!';
+        }
         document.getElementById('chart-hero-quant-sub').textContent = quantStatus;
 
         // 보유 중인 종목 오버레이 배너 갱신
