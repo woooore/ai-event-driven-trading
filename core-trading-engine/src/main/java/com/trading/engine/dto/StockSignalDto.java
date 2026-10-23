@@ -96,6 +96,27 @@ public class StockSignalDto {
     @JsonAlias({"maDisparity"})
     private Double maDisparity;
 
+    /**
+     * 뉴스 촉매 영향도 점수 (0~100)
+     */
+    @JsonProperty("news_impact_score")
+    @JsonAlias({"newsImpactScore"})
+    private Integer newsImpactScore;
+
+    /**
+     * 선반영(Priced-in) 위험도: LOW, MEDIUM, HIGH
+     */
+    @JsonProperty("priced_in_risk")
+    @JsonAlias({"pricedInRisk"})
+    private String pricedInRisk;
+
+    /**
+     * 권장 투자 비중 (총자산 대비 %). 확신도/선반영/변동성을 종합해 AI 워커가 산출
+     */
+    @JsonProperty("position_size_pct")
+    @JsonAlias({"positionSizePct"})
+    private Double positionSizePct;
+
     // 호환성을 위한 게터
     public String getStockCode() {
         return ticker;

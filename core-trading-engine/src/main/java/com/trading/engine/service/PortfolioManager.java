@@ -29,7 +29,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Service
 public class PortfolioManager {
 
-    @Value("${trading.initial-capital-krw:10000000}")
+    @Value("${trading.initial-capital-krw:20000000}")
     private double initialCapitalKrw;
 
     @Value("${trading.usd-krw-rate:1350.0}")
@@ -98,7 +98,7 @@ public class PortfolioManager {
         boolean restored = restorePersistedState();
         if (!restored) {
             log.info("==================================================");
-            log.info(">> [1,000만원 가상 포트폴리오 트래커 초기화]");
+            log.info(">> [2,000만원 가상 포트폴리오 트래커 초기화]");
             log.info("   초기 자본: ₩{} (약 ${} USD)",
                     String.format(Locale.KOREA, "%,.0f", initialCapitalKrw),
                     String.format(Locale.US, "%,.2f", initialCashUsd));
@@ -249,6 +249,28 @@ public class PortfolioManager {
         return positions.values();
     }
 
+    /**
+     * 총 자산(USD) = 현금 + 보유 종목 평가액 (비중 기반 매수 수량 산정용)
+     */
+    public double getTotalEquityUsd() {
+        double holdings = 0.0;
+        for (Position p : positions.values()) {
+            double px = p.getCurrentPrice() > 0 ? p.getCurrentPrice() : p.getBuyPrice();
+            holdings += px * p.getQuantity();
+        }
+        return currentCashUsd + holdings;
+    }
+
+    /**
+     * 특정 종목의 현재 보유 평가액(USD)
+     */
+    public double getPositionValueUsd(String ticker) {
+        Position p = positions.get(ticker.toUpperCase());
+        if (p == null) return 0.0;
+        double px = p.getCurrentPrice() > 0 ? p.getCurrentPrice() : p.getBuyPrice();
+        return px * p.getQuantity();
+    }
+
     public Position getPosition(String ticker) {
         return positions.get(ticker.toUpperCase());
     }
@@ -258,7 +280,7 @@ public class PortfolioManager {
     }
 
     /**
-     * 포트폴리오 전체 초기화 (원금 1,000만원 복원 및 보유 종목/체결 로그 초기화)
+     * 포트폴리오 전체 초기화 (설정된 초기 원금 복원 및 보유 종목/체결 로그 초기화)
      */
     public synchronized void resetPortfolio() {
         this.currentCashUsd = this.initialCashUsd;
@@ -276,7 +298,9 @@ public class PortfolioManager {
         } catch (Exception ignored) {}
 
         persistState();
-        log.info(">> 🔄 [포트폴리오 전체 초기화 완료] 초기 자본 ₩10,000,000 ($7,407.41) 원상 복구 완료");
+        log.info(">> 🔄 [포트폴리오 전체 초기화 완료] 초기 자본 ₩{} (${}) 원상 복구 완료",
+                String.format(Locale.KOREA, "%,.0f", initialCapitalKrw),
+                String.format(Locale.US, "%,.2f", initialCashUsd));
     }
 
     /**

@@ -36,6 +36,12 @@ public class KisOrderService {
     @Value("${trading.default-quantity:1}")
     private int defaultQuantity;
 
+    @Value("${trading.max-position-pct:15.0}")
+    private double maxPositionPct;
+
+    @Value("${trading.min-cash-reserve-pct:10.0}")
+    private double minCashReservePct;
+
     private final PortfolioManager portfolioManager;
     private final RestTemplate restTemplate = new RestTemplate();
     private String accessToken;
@@ -83,12 +89,24 @@ public class KisOrderService {
         String ticker = signal.getTicker().toUpperCase().trim();
         String action = signal.getAction() != null ? signal.getAction().toUpperCase() : "BUY";
         String exchange = resolveExchange(ticker, signal.getExchange());
-        int qty = defaultQuantity;
-        String orderQty = String.valueOf(qty);
 
         // 단가 포맷 (USD 소수점 2자리)
         double price = signal.getOrderPrice() != null ? signal.getOrderPrice() : 0.0;
         String ordUnpr = String.format(Locale.US, "%.2f", price);
+
+        // 매수 수량: 확신도/선반영/변동성이 반영된 권장 비중 기반으로 산정 (매도는 보유 수량 전량)
+        int qty;
+        if ("SELL".equalsIgnoreCase(action)) {
+            var held = portfolioManager.getPosition(ticker);
+            qty = held != null ? held.getQuantity() : defaultQuantity;
+        } else {
+            qty = calculateBuyQuantity(signal, ticker, price);
+            if (qty <= 0) {
+                log.warn(">> [매수 스킵] {} 비중 한도/현금 보유 비율 제약으로 매수 수량이 0주입니다.", ticker);
+                return;
+            }
+        }
+        String orderQty = String.valueOf(qty);
 
         log.info("--------------------------------------------------");
         log.info(">> [미국 주식 주문 요청 수신]");
@@ -150,6 +168,51 @@ public class KisOrderService {
         } catch (Exception e) {
             log.error(">> [KIS API] 미장 주문 전송 실패 (잔고부족, 정규장 외 시간 등): {}", e.getMessage());
         }
+    }
+
+    /**
+     * 확신도 기반 비중 매수 수량 산정
+     *  - 권장 비중(position_size_pct)이 없으면 확신도로 추정 (0.9+ : 12%, 0.8+ : 8%, 그 외 5%)
+     *  - 종목당 최대 비중(max-position-pct) 및 기보유분 고려
+     *  - 최소 현금 비중(min-cash-reserve-pct)은 항상 남김
+     */
+    private int calculateBuyQuantity(StockSignalDto signal, String ticker, double price) {
+        if (price <= 0) {
+            return defaultQuantity;
+        }
+
+        double equity = portfolioManager.getTotalEquityUsd();
+        double cash = portfolioManager.getCurrentCashUsd();
+
+        double pct;
+        if (signal.getPositionSizePct() != null && signal.getPositionSizePct() > 0) {
+            pct = signal.getPositionSizePct();
+        } else {
+            double conf = signal.getConfidence() != null ? signal.getConfidence() : 0.7;
+            pct = conf >= 0.90 ? 12.0 : (conf >= 0.80 ? 8.0 : 5.0);
+        }
+        pct = Math.max(2.0, Math.min(pct, maxPositionPct));
+
+        double budget = equity * pct / 100.0;
+
+        // 종목당 최대 비중 초과 방지 (이미 보유 중이면 잔여 한도만)
+        double existingValue = portfolioManager.getPositionValueUsd(ticker);
+        double capRemaining = (equity * maxPositionPct / 100.0) - existingValue;
+        budget = Math.min(budget, capRemaining);
+
+        // 현금 최소 보유 비율 유지
+        double spendable = cash - (equity * minCashReservePct / 100.0);
+        budget = Math.min(budget, spendable);
+
+        if (budget < price) {
+            return 0;
+        }
+
+        int qty = (int) Math.floor(budget / price);
+        log.info(">> [비중 매수 산정] {} 권장비중 {}% -> 예산 ${} -> {}주 (총자산 ${}, 현금 ${})",
+                ticker, String.format(Locale.US, "%.1f", pct), String.format(Locale.US, "%.2f", budget), qty,
+                String.format(Locale.US, "%.2f", equity), String.format(Locale.US, "%.2f", cash));
+        return qty;
     }
 
     /**

@@ -25,68 +25,87 @@ if not api_key:
     print("[경고] OPENAI_API_KEY가 .env 파일에 설정되지 않았습니다.")
 client = OpenAI(api_key=api_key)
 
-# 2. 미국 시총 상위 50대 우량주 유니버스 풀 (S&P 500 / NASDAQ Top 50)
-TOP_50_US_STOCKS: Dict[str, Dict[str, str]] = {
-    # 빅테크 & 반도체
-    "NVDA": {"name": "NVIDIA", "keywords": ["nvidia", "nvda", "jensen huang"], "exchange": "NASD"},
-    "AAPL": {"name": "Apple", "keywords": ["apple", "aapl", "iphone", "tim cook"], "exchange": "NASD"},
-    "MSFT": {"name": "Microsoft", "keywords": ["microsoft", "msft", "satya nadella", "azure"], "exchange": "NASD"},
-    "AMZN": {"name": "Amazon", "keywords": ["amazon", "amzn", "aws"], "exchange": "NASD"},
-    "GOOGL": {"name": "Alphabet (Google)", "keywords": ["google", "googl", "goog", "alphabet", "sundar pichai"], "exchange": "NASD"},
-    "META": {"name": "Meta Platforms", "keywords": ["meta", "facebook", "zuckerberg", "instagram"], "exchange": "NASD"},
-    "TSLA": {"name": "Tesla", "keywords": ["tesla", "tsla", "elon musk", "cybertruck", "robotaxi"], "exchange": "NASD"},
-    "AVGO": {"name": "Broadcom", "keywords": ["broadcom", "avgo"], "exchange": "NASD"},
-    "AMD": {"name": "AMD", "keywords": ["amd", "lisa su", "radeon"], "exchange": "NASD"},
-    "QCOM": {"name": "Qualcomm", "keywords": ["qualcomm", "qcom", "snapdragon"], "exchange": "NASD"},
-    "NFLX": {"name": "Netflix", "keywords": ["netflix", "nflx"], "exchange": "NASD"},
-    "ORCL": {"name": "Oracle", "keywords": ["oracle", "orcl", "larry ellison"], "exchange": "NYSE"},
-    "CRM": {"name": "Salesforce", "keywords": ["salesforce", "crm"], "exchange": "NYSE"},
-    "ADBE": {"name": "Adobe", "keywords": ["adobe", "adbe"], "exchange": "NASD"},
-    "CSCO": {"name": "Cisco", "keywords": ["cisco", "csco"], "exchange": "NASD"},
-    "INTU": {"name": "Intuit", "keywords": ["intuit", "intu"], "exchange": "NASD"},
-    "IBM": {"name": "IBM", "keywords": ["ibm"], "exchange": "NYSE"},
-    "AMAT": {"name": "Applied Materials", "keywords": ["applied materials", "amat"], "exchange": "NASD"},
-    "TXN": {"name": "Texas Instruments", "keywords": ["texas instruments", "txn"], "exchange": "NASD"},
-    "NOW": {"name": "ServiceNow", "keywords": ["servicenow", "now"], "exchange": "NYSE"},
+# 2. 나스닥 100 및 미국 대표 우량/성장주 유니버스 풀 (NASDAQ & Tech Top 100)
+WATCHLIST_UNIVERSE: Dict[str, Dict[str, str]] = {
+    # ── [빅테크 & 초거대 플랫폼] ──
+    "NVDA": {"name": "엔비디아 (NVIDIA)", "keywords": ["nvidia", "nvda", "jensen huang", "gpu", "blackwell"], "exchange": "NASD"},
+    "AAPL": {"name": "애플 (Apple)", "keywords": ["apple", "aapl", "iphone", "tim cook", "apple intelligence"], "exchange": "NASD"},
+    "MSFT": {"name": "마이크로소프트 (Microsoft)", "keywords": ["microsoft", "msft", "satya nadella", "azure", "copilot"], "exchange": "NASD"},
+    "AMZN": {"name": "아마존 (Amazon)", "keywords": ["amazon", "amzn", "aws", "andy jassy", "cloud"], "exchange": "NASD"},
+    "GOOGL": {"name": "알파벳 구글 (Alphabet)", "keywords": ["google", "googl", "goog", "alphabet", "gemini", "sundar pichai"], "exchange": "NASD"},
+    "META": {"name": "메타 (Meta Platforms)", "keywords": ["meta", "facebook", "zuckerberg", "instagram", "llama"], "exchange": "NASD"},
+    "TSLA": {"name": "테슬라 (Tesla)", "keywords": ["tesla", "tsla", "elon musk", "cybertruck", "robotaxi", "fsd"], "exchange": "NASD"},
+    "NFLX": {"name": "넷플릭스 (Netflix)", "keywords": ["netflix", "nflx", "streaming", "squid game"], "exchange": "NASD"},
 
-    # 금융 / 투자
-    "BRK.B": {"name": "Berkshire Hathaway", "keywords": ["berkshire", "warren buffett", "brk"], "exchange": "NYSE"},
-    "JPM": {"name": "JPMorgan Chase", "keywords": ["jpmorgan", "jpm", "jamie dimon"], "exchange": "NYSE"},
-    "V": {"name": "Visa", "keywords": ["visa"], "exchange": "NYSE"},
-    "MA": {"name": "Mastercard", "keywords": ["mastercard"], "exchange": "NYSE"},
-    "BAC": {"name": "Bank of America", "keywords": ["bank of america", "bofa"], "exchange": "NYSE"},
-    "WFC": {"name": "Wells Fargo", "keywords": ["wells fargo", "wfc"], "exchange": "NYSE"},
+    # ── [AI 반도체 & 장비 & 하드웨어] ──
+    "AVGO": {"name": "브로드컴 (Broadcom)", "keywords": ["broadcom", "avgo", "hock tan"], "exchange": "NASD"},
+    "AMD": {"name": "AMD", "keywords": ["amd", "lisa su", "mi300", "ryzen", "radeon"], "exchange": "NASD"},
+    "QCOM": {"name": "퀄컴 (Qualcomm)", "keywords": ["qualcomm", "qcom", "snapdragon"], "exchange": "NASD"},
+    "TSM": {"name": "TSMC", "keywords": ["tsmc", "tsm", "foundry"], "exchange": "NYSE"},
+    "ASML": {"name": "ASML", "keywords": ["asml", "euv", "lithography"], "exchange": "NASD"},
+    "ARM": {"name": "Arm 홀딩스", "keywords": ["arm", "arm holdings", "softbank"], "exchange": "NASD"},
+    "MU": {"name": "마이크론 (Micron)", "keywords": ["micron", "mu", "hbm", "dram"], "exchange": "NASD"},
+    "INTC": {"name": "인텔 (Intel)", "keywords": ["intel", "intc", "pat gelsinger"], "exchange": "NASD"},
+    "AMAT": {"name": "어플라이드 머티어리얼즈", "keywords": ["applied materials", "amat"], "exchange": "NASD"},
+    "LRCX": {"name": "램리서치 (Lam Research)", "keywords": ["lam research", "lrcx"], "exchange": "NASD"},
+    "KLAC": {"name": "KLA", "keywords": ["kla", "klac"], "exchange": "NASD"},
+    "MRVL": {"name": "마벨 (Marvell)", "keywords": ["marvell", "mrvl"], "exchange": "NASD"},
+    "TXN": {"name": "텍사스 인스트루먼트", "keywords": ["texas instruments", "txn"], "exchange": "NASD"},
+    "SMCI": {"name": "슈퍼마이크로 (Supermicro)", "keywords": ["supermicro", "smci"], "exchange": "NASD"},
 
-    # 헬스케어 / 바이오
-    "LLY": {"name": "Eli Lilly", "keywords": ["eli lilly", "lly", "mounjaro", "zepbound"], "exchange": "NYSE"},
-    "UNH": {"name": "UnitedHealth", "keywords": ["unitedhealth", "unh"], "exchange": "NYSE"},
-    "JNJ": {"name": "Johnson & Johnson", "keywords": ["johnson & johnson", "jnj"], "exchange": "NYSE"},
-    "ABBV": {"name": "AbbVie", "keywords": ["abbvie", "abbv"], "exchange": "NYSE"},
-    "MRK": {"name": "Merck", "keywords": ["merck", "mrk", "keytruda"], "exchange": "NYSE"},
-    "TMO": {"name": "Thermo Fisher", "keywords": ["thermo fisher", "tmo"], "exchange": "NYSE"},
-    "DHR": {"name": "Danaher", "keywords": ["danaher", "dhr"], "exchange": "NYSE"},
-    "ISRG": {"name": "Intuitive Surgical", "keywords": ["intuitive surgical", "isrg"], "exchange": "NASD"},
+    # ── [엔터프라이즈 AI / SaaS / 클라우드 / 보안] ──
+    "PLTR": {"name": "팔란티어 (Palantir)", "keywords": ["palantir", "pltr", "alex karp", "aip"], "exchange": "NYSE"},
+    "ORCL": {"name": "오라클 (Oracle)", "keywords": ["oracle", "orcl", "larry ellison"], "exchange": "NYSE"},
+    "CRM": {"name": "세일즈포스 (Salesforce)", "keywords": ["salesforce", "crm", "agentforce"], "exchange": "NYSE"},
+    "ADBE": {"name": "어도비 (Adobe)", "keywords": ["adobe", "adbe", "firefly"], "exchange": "NASD"},
+    "NOW": {"name": "서비스나우 (ServiceNow)", "keywords": ["servicenow", "now"], "exchange": "NYSE"},
+    "INTU": {"name": "인튜이트 (Intuit)", "keywords": ["intuit", "intu", "turbotax"], "exchange": "NASD"},
+    "IBM": {"name": "IBM", "keywords": ["ibm", "watson"], "exchange": "NYSE"},
+    "PANW": {"name": "팔로알토 네트웍스", "keywords": ["palo alto networks", "panw"], "exchange": "NASD"},
+    "CRWD": {"name": "크라우드스트라이크", "keywords": ["crowdstrike", "crwd"], "exchange": "NASD"},
+    "SNOW": {"name": "스노우플레이크", "keywords": ["snowflake", "snow"], "exchange": "NYSE"},
+    "DDOG": {"name": "데이터독 (Datadog)", "keywords": ["datadog", "ddog"], "exchange": "NASD"},
+    "MDB": {"name": "몽고DB (MongoDB)", "keywords": ["mongodb", "mdb"], "exchange": "NASD"},
+    "ZS": {"name": "지스케일러 (Zscaler)", "keywords": ["zscaler", "zs"], "exchange": "NASD"},
+    "CSCO": {"name": "시스코 (Cisco)", "keywords": ["cisco", "csco"], "exchange": "NASD"},
 
-    # 필수소비재 / 유통 / 서비스
-    "WMT": {"name": "Walmart", "keywords": ["walmart", "wmt"], "exchange": "NYSE"},
-    "COST": {"name": "Costco", "keywords": ["costco", "cost"], "exchange": "NASD"},
-    "HD": {"name": "Home Depot", "keywords": ["home depot", "hd"], "exchange": "NYSE"},
-    "PG": {"name": "Procter & Gamble", "keywords": ["procter & gamble", "p&g", "pg"], "exchange": "NYSE"},
-    "KO": {"name": "Coca-Cola", "keywords": ["coca-cola", "coke", "ko"], "exchange": "NYSE"},
-    "PEP": {"name": "PepsiCo", "keywords": ["pepsico", "pepsi", "pep"], "exchange": "NASD"},
-    "MCD": {"name": "McDonald's", "keywords": ["mcdonald's", "mcdonalds", "mcd"], "exchange": "NYSE"},
-    "DIS": {"name": "Walt Disney", "keywords": ["disney", "dis", "bob iger"], "exchange": "NYSE"},
-    "NKE": {"name": "Nike", "keywords": ["nike", "nke"], "exchange": "NYSE"},
-    "PM": {"name": "Philip Morris", "keywords": ["philip morris", "pm"], "exchange": "NYSE"},
-    "BKNG": {"name": "Booking Holdings", "keywords": ["booking holdings", "bkng"], "exchange": "NASD"},
+    # ── [핀테크 / 전자상거래 / 플랫폼 / 모빌리티] ──
+    "SHOP": {"name": "쇼피파이 (Shopify)", "keywords": ["shopify", "shop"], "exchange": "NYSE"},
+    "PYPL": {"name": "페이팔 (PayPal)", "keywords": ["paypal", "pypl"], "exchange": "NASD"},
+    "COIN": {"name": "코인베이스 (Coinbase)", "keywords": ["coinbase", "coin", "bitcoin", "crypto"], "exchange": "NASD"},
+    "UBER": {"name": "우버 (Uber)", "keywords": ["uber"], "exchange": "NYSE"},
+    "ABNB": {"name": "에어비앤비 (Airbnb)", "keywords": ["airbnb", "abnb"], "exchange": "NASD"},
+    "DASH": {"name": "도어대시 (DoorDash)", "keywords": ["doordash", "dash"], "exchange": "NASD"},
+    "BKNG": {"name": "부킹 홀딩스", "keywords": ["booking", "bkng"], "exchange": "NASD"},
+    "MELI": {"name": "메르카도리브레", "keywords": ["mercadolibre", "meli"], "exchange": "NASD"},
+    "PDD": {"name": "핀둬둬 (PDD/Temu)", "keywords": ["pdd", "temu", "pinduoduo"], "exchange": "NASD"},
 
-    # 에너지 / 산업재
-    "XOM": {"name": "Exxon Mobil", "keywords": ["exxon", "xom", "mobil"], "exchange": "NYSE"},
-    "CVX": {"name": "Chevron", "keywords": ["chevron", "cvx"], "exchange": "NYSE"},
-    "LIN": {"name": "Linde", "keywords": ["linde", "lin"], "exchange": "NYSE"},
-    "CAT": {"name": "Caterpillar", "keywords": ["caterpillar", "cat"], "exchange": "NYSE"},
-    "GE": {"name": "GE Aerospace", "keywords": ["ge aerospace", "general electric"], "exchange": "NYSE"}
+    # ── [바이오 / 헬스케어 혁신] ──
+    "LLY": {"name": "일라이 릴리 (Eli Lilly)", "keywords": ["eli lilly", "lly", "mounjaro", "zepbound"], "exchange": "NYSE"},
+    "ISRG": {"name": "인튜이티브 서지컬", "keywords": ["intuitive surgical", "isrg", "da vinci"], "exchange": "NASD"},
+    "VRTX": {"name": "버텍스 (Vertex)", "keywords": ["vertex", "vrtx"], "exchange": "NASD"},
+    "REGN": {"name": "리제네론 (Regeneron)", "keywords": ["regeneron", "regn"], "exchange": "NASD"},
+    "MRNA": {"name": "모더나 (Moderna)", "keywords": ["moderna", "mrna"], "exchange": "NASD"},
+    "GILD": {"name": "길리어드 (Gilead)", "keywords": ["gilead", "gild"], "exchange": "NASD"},
+    "AMGN": {"name": "암젠 (Amgen)", "keywords": ["amgen", "amgn"], "exchange": "NASD"},
+    "UNH": {"name": "유나이티드헬스", "keywords": ["unitedhealth", "unh"], "exchange": "NYSE"},
+    "TMO": {"name": "써모피셔", "keywords": ["thermo fisher", "tmo"], "exchange": "NYSE"},
+
+    # ── [대표 소비재 / 산업 / 에너지] ──
+    "COST": {"name": "코스트코 (Costco)", "keywords": ["costco", "cost"], "exchange": "NASD"},
+    "WMT": {"name": "월마트 (Walmart)", "keywords": ["walmart", "wmt"], "exchange": "NYSE"},
+    "SBUX": {"name": "스타벅스 (Starbucks)", "keywords": ["starbucks", "sbux"], "exchange": "NASD"},
+    "LULU": {"name": "룰루레몬 (Lululemon)", "keywords": ["lululemon", "lulu"], "exchange": "NASD"},
+    "DIS": {"name": "디즈니 (Disney)", "keywords": ["disney", "dis"], "exchange": "NYSE"},
+    "JPM": {"name": "JP모건 (JPMorgan)", "keywords": ["jpmorgan", "jpm"], "exchange": "NYSE"},
+    "V": {"name": "비자 (Visa)", "keywords": ["visa"], "exchange": "NYSE"},
+    "MA": {"name": "마스터카드 (Mastercard)", "keywords": ["mastercard"], "exchange": "NYSE"},
+    "CAT": {"name": "캐터필러 (Caterpillar)", "keywords": ["caterpillar", "cat"], "exchange": "NYSE"},
+    "GE": {"name": "GE 에어로스페이스", "keywords": ["ge aerospace", "ge"], "exchange": "NYSE"}
 }
+
+# 기존 코드와의 하위 호환성 별칭
+TOP_50_US_STOCKS = WATCHLIST_UNIVERSE
 
 # 3. RAG 기반 매매 일지 (Trading Journal) 시스템
 JOURNAL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trading_journal.json")
@@ -315,6 +334,9 @@ class StockSignal(BaseModel):
     take_profit: float = Field(description="ATR 변동성 기반 동적 목표 익절 기준가 (USD)")
     sentiment: str = Field(description="POSITIVE, NEGATIVE, NEUTRAL 중 하나")
     reason: str = Field(description="AI의 핵심 투자 논거 및 매매 근거 요약 (1~2문장)")
+    news_impact_score: int = Field(default=50, description="뉴스 촉매의 실질적 영향력 점수 (0~100점). 단순 소음/의견은 40점 이하, 확실한 실적/수주 팩트는 70점 이상")
+    priced_in_risk: str = Field(default="LOW", description="선반영(Priced-in) 및 '뉴스에 팔아라' 위험도: LOW, MEDIUM, HIGH 중 하나")
+    position_size_pct: float = Field(default=5.0, description="총자산(2,000만원) 대비 권장 매수 비중 (%단위, 3.0 ~ 15.0%). 확신도와 뉴스 영향도, 변동성에 따라 결정")
     rsi: Optional[float] = Field(default=None, description="14일 상대강도지수 (RSI)")
     ma_disparity: Optional[float] = Field(default=None, description="20일 이동평균선 이격도 (%)")
     bollinger_b: Optional[float] = Field(default=None, description="볼린저 밴드 %B (0.0~1.0)")
@@ -448,22 +470,34 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
 
     system_prompt = (
         "너는 미국 월스트리트 최상위 헤지펀드의 시니어 이벤트 드리븐(Event-Driven) & 퀀트(Quant) 트레이더다.\n"
-        "주어진 미국 주식의 현재가, 당일 변동률, 종합 퀀트 지표(RSI, 볼린저 밴드 %B, MACD 골든크로스, ATR, 퀀트 스코어), 과거 실패 매매 일지(RAG), 그리고 최신 뉴스를 종합 분석하여 트레이딩 결정을 내려라.\n\n"
-        "【필수 매매 규칙 & 손실 방어 원칙 (Rule Updates)】:\n"
-        "1. [선반영(Priced-in) 및 '뉴스에 팔아라' 철저 방어]:\n"
-        "   - 정량적 수치 없는 단순 기대감(Hope, Anticipate, Outlook), 애널리스트 목표가 상향 기사는 무조건 action='HOLD', confidence <= 0.50으로 처리하라.\n"
-        "2. [기술적 과매수 / 상단 밴드 과열 추격 매수 절대 금지]:\n"
-        "   - RSI(14)가 70.0 이상이거나 볼린저 밴드 %B가 0.95 이상이면 단기 천장이다. 뉴스가 좋아도 추격 매수하지 말고 action='HOLD'로 결정하라.\n"
-        "3. [퀀트 스코어 및 모멘텀 우대]:\n"
-        "   - 종합 퀀트 스코어가 70점 이상이거나, 볼린저 밴드 하단 지지(%B <= 0.35) 또는 MACD 골든크로스 발생 상태에서 확실한 실적/수주 팩트 호재가 결합되면 강력한 매수(action='BUY', confidence >= 0.75)를 집행하라.\n"
-        "4. [악재 감지 시 즉시 긴급 탈출 SELL]:\n"
-        "   - 대규모 소송 패소, 거액 과징금, 실적 쇼크, 규제 제재 시 즉시 action='SELL', confidence >= 0.75로 전량 탈출하라.\n"
-        "5. BUY 결정 시:\n"
+        "주어진 미국 주식의 현재가, 당일 변동률, 종합 퀀트 지표(RSI, 볼린저 밴드 %B, MACD, ATR, 퀀트 스코어), 과거 실패 매매 일지(RAG), 그리고 최신 뉴스를 종합 분석하여 트레이딩 결정을 내려라.\n\n"
+        "【핵심 원칙: 기술적 지표 단독 매수 절대 금지 & 뉴스 팩트 촉매 필수】:\n"
+        "- 볼린저 밴드 하단(%B 낮음)이나 RSI 과매도라는 이유만으로 매수(BUY)하는 것은 엄격히 금지된다!\n"
+        "- 반드시 주가를 실제로 밀어올릴 '강력하고 새로운 펀더멘털 뉴스 팩트 촉매(Catalyst)'가 존재할 때만 매수하라.\n\n"
+        "【필수 매매 규칙 & 손실 방어 원칙】:\n"
+        "1. [뉴스 촉매 영향도 평가 (news_impact_score: 0~100)]:\n"
+        "   - 단순 시황 중계, 애널리스트 목표가 상향, 정량적 수치 없는 단순 기대감(Hope, Outlook), 루머는 50점 이하.\n"
+        "   - 구체적인 어닝 서프라이즈 실적, 대형 공급/수주 계약, 신제품/신약 FDA 승인 등 실질적 펀더멘털 변화는 70점 이상.\n"
+        "   - ★ BUY 액션은 반드시 news_impact_score >= 65 이상일 때만 허용된다!\n"
+        "2. [선반영(Priced-in) 및 '뉴스에 팔아라' 매물 출회 철저 방어 (priced_in_risk: LOW / MEDIUM / HIGH)]:\n"
+        "   - 호재 뉴스가 있더라도 이미 당일 주가가 크게 급등했거나(+3.5% 이상), 뉴스가 이미 며칠 전부터 거론되어 시장에 선반영된 경우 priced_in_risk='HIGH' 또는 'MEDIUM'으로 지정하라.\n"
+        "   - 선반영 위험(priced_in_risk)이 HIGH이면 '뉴스에 팔아라(Sell the News)' 차익실현 매물받이가 되므로 무조건 action='HOLD'로 결정하라!\n"
+        "3. [기술적 과매수 / 상단 밴드 과열 추격 매수 절대 금지]:\n"
+        "   - RSI(14)가 70.0 이상이거나 볼린저 밴드 %B가 0.95 이상이면 단기 과열이다. 뉴스가 좋아도 추격 매수하지 말고 action='HOLD'로 결정하라.\n"
+        "4. [비중 배분 산정 (position_size_pct: 3.0 ~ 15.0%)]:\n"
+        "   - 총 시드 2,000만원 기준 종목당 권장 투자 비중.\n"
+        "   - 특급 호재(news_impact_score >= 85) + 낮은 선반영 위험(LOW) + 양호한 기술적 위치 => 10.0 ~ 15.0% (다수 주 매수)\n"
+        "   - 일반 우량 호재(news_impact_score 70~84) => 6.0 ~ 10.0%\n"
+        "   - 신중한 분할 진입 => 3.0 ~ 5.0%\n"
+        "   - HOLD 또는 SELL일 경우 position_size_pct = 0.0\n"
+        "5. [악재 감지 시 즉시 긴급 탈출 SELL]:\n"
+        "   - 대규모 소송 패소, 거액 과징금, 실적 쇼크, 회계 부정, 규제 제재 시 즉시 action='SELL', confidence >= 0.75로 전량 탈출하라.\n"
+        "6. BUY 결정 시 가격 기준:\n"
         f"   - order_price: 현재 시장 가격 (${current_price}) 기준\n"
         f"   - take_profit: ATR 변동성 기반 동적 익절가 (${dynamic_tp})\n"
         f"   - stop_loss: ATR 변동성 기반 동적 손절가 (${dynamic_sl})\n"
         f"   - exchange: '{exchange}'\n"
-        "6. reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 퀀트 지표와 뉴스 팩트를 함께 언급하여 명확히 작성하라. (절대 영어가 아닌 한국어로 작성할 것)"
+        "7. reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 뉴스 팩트, 선반영 여부, 기술적 지표를 함께 언급하여 명확히 작성하라. (절대 영어가 아닌 한국어로 작성할 것)"
     )
 
     user_prompt = f"""
@@ -497,22 +531,46 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         signal.atr_pct = atr_pct
         signal.quant_score = quant_score
 
-        # 퀀트 기술적 지표 1차 하드 안전장치 (AI 환각이나 과열 오판 방어)
+        # 1차: 뉴스 팩트 촉매 및 선반영 하드 안전장치
         if signal.action == "BUY":
-            if rsi is not None and rsi >= 70.0:
-                print(f"   🛡️ [퀀트 기술적 필터 차단] {ticker} RSI({rsi:.1f}) >= 70 과매수 과열! 세력 매물받이 방어로 HOLD 전환")
+            # 1. 뉴스 촉매 강도 미달 차단 (기술적 지표만 보고 매수하는 오판 방어)
+            if signal.news_impact_score is not None and signal.news_impact_score < 65:
+                print(f"   🛡️ [뉴스 촉매 부족 차단] {ticker} 뉴스 영향도({signal.news_impact_score}점) < 65! 단순 밴드/노이즈 매수 차단 -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
+                signal.position_size_pct = 0.0
+                signal.reason = f"[실질 뉴스 촉매 부족] 뉴스 영향도 {signal.news_impact_score}점으로 펀더멘털 호재 팩트 미비. {signal.reason}"
+
+            # 2. 선반영(Priced-in) 및 '뉴스에 팔아라' 매물받이 차단
+            elif signal.priced_in_risk == "HIGH" or (signal.priced_in_risk == "MEDIUM" and pct_change >= 3.5):
+                print(f"   🛡️ [선반영(Priced-in) 차단] {ticker} 선반영 위험({signal.priced_in_risk}, 변동률 {pct_change:+}%). 차익실현 매물받이 방지 -> HOLD 전환")
+                signal.action = "HOLD"
+                signal.confidence = min(signal.confidence, 0.45)
+                signal.position_size_pct = 0.0
+                signal.reason = f"[선반영 위험 차단] 호재가 주가에 이미 선반영되었거나 당일 급등({pct_change:+}%)으로 차익실현 위험. {signal.reason}"
+
+            # 3. 기술적 과매수 차단
+            elif rsi is not None and rsi >= 70.0:
+                print(f"   🛡️ [기술적 과매수 차단] {ticker} RSI({rsi:.1f}) >= 70 과열! 세력 매물받이 방어로 HOLD 전환")
+                signal.action = "HOLD"
+                signal.confidence = min(signal.confidence, 0.45)
+                signal.position_size_pct = 0.0
                 signal.reason = f"[기술적 과매수 차단] RSI({rsi:.1f})가 70 이상 과열 상태로 단기 고점 세력 차익실현 덤핑 위험. {signal.reason}"
+
+            # 4. 볼린저 상단 이탈 과열 차단
             elif bollinger_b is not None and bollinger_b >= 1.0:
-                print(f"   🛡️ [퀀트 볼린저 상단 차단] {ticker} 볼린저 밴드 상단 이탈(%B={bollinger_b}) 과열! HOLD 전환")
+                print(f"   🛡️ [볼린저 상단 과열 차단] {ticker} 볼린저 밴드 상단 이탈(%B={bollinger_b}) 과열! HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
+                signal.position_size_pct = 0.0
                 signal.reason = f"[볼린저 밴드 상단 과열 차단] 주가가 볼린저 상단을 돌파(%B {bollinger_b})하여 조정 압력 우려. {signal.reason}"
+
+            # 5. 퀀트 스코어 미달 차단
             elif quant_score < 50:
                 print(f"   🛡️ [퀀트 알파 스코어 차단] {ticker} 퀀트 점수({quant_score}점) 저조로 HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
+                signal.position_size_pct = 0.0
                 signal.reason = f"[퀀트 점수 미달] 종합 퀀트 알파 점수가 {quant_score}점으로 기술적 지지 미비. {signal.reason}"
 
         return signal
@@ -565,20 +623,20 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
             payload = signal.model_dump_json()
             producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
             producer.flush(timeout=5)
-            print(f"   🚀 [시그널 발행 완료] {signal.action} {signal.ticker} -> Core Engine(1,000만원 포트폴리오) 전송 완료!")
+            print(f"   🚀 [시그널 발행 완료] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%, 뉴스점수 {signal.news_impact_score}) -> Core Engine(2,000만원 포트폴리오) 전송 완료!")
         except Exception as ke:
             print(f"   ⚠️ [Kafka 전송 오류]: {ke}")
     else:
         print(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
-# 10. 실시간 전체 시장 종합 속보 스캐너 (시총 50위 종목 10개씩 라운드로빈 순환)
+# 10. 실시간 전체 시장 종합 속보 스캐너 (나스닥 & 우량/성장주 유니버스 10개씩 라운드로빈 순환)
 def scan_market_wide_news(batch_size: int = 10):
-    """미국 시총 상위 50대 기업의 실시간 헤드라인을 10개씩 라운드로빈 회전하며 24시간 실시간 감시"""
+    """나스닥 및 미국 대표 우량/성장주 유니버스 기업의 실시간 헤드라인을 10개씩 라운드로빈 회전하며 24시간 실시간 감시"""
     global current_scan_offset
-    all_tickers = list(TOP_50_US_STOCKS.keys())
+    all_tickers = list(WATCHLIST_UNIVERSE.keys())
     total_tickers = len(all_tickers)
 
-    # 50개 종목을 10개씩 회전(Rolling)하면서 순환
+    # 유니버스 종목을 10개씩 회전(Rolling)하면서 순환
     start_idx = current_scan_offset % total_tickers
     end_idx = start_idx + batch_size
 
@@ -589,7 +647,7 @@ def scan_market_wide_news(batch_size: int = 10):
 
     current_scan_offset = (current_scan_offset + batch_size) % total_tickers
 
-    print(f"\n>> 🌐 [미국 시총 50위 유니버스 라운드로빈 스캔 ({start_idx + 1}~{min(start_idx + batch_size, total_tickers)}/{total_tickers}번째 종목)]")
+    print(f"\n>> 🌐 [나스닥/미국 우량 유니버스 라운드로빈 스캔 ({start_idx + 1}~{min(start_idx + batch_size, total_tickers)}/{total_tickers}번째 종목)]")
     print(f"   스캔 대상: {', '.join(target_batch)}")
 
     analyzed_count = 0
@@ -606,7 +664,7 @@ def scan_market_wide_news(batch_size: int = 10):
 
             analyzed_count += 1
             tech_info = f"RSI: {market_data['rsi']:.1f}" if market_data.get('rsi') else "RSI: N/A"
-            print(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({TOP_50_US_STOCKS.get(ticker, {}).get('name', ticker)}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
+            print(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({WATCHLIST_UNIVERSE.get(ticker, {}).get('name', ticker)}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
             print(f"   헤드라인: {market_data['news'][0]['title'][:80]}")
 
             signal = evaluate_market_and_trade(market_data)
@@ -615,7 +673,7 @@ def scan_market_wide_news(batch_size: int = 10):
 
             mark_content_analyzed(content_hash)
 
-            print(f"   [AI 판단] {signal.action} | 확신도: {signal.confidence:.2f} | 감성: {signal.sentiment}")
+            print(f"   [AI 판단] {signal.action} | 확신도: {signal.confidence:.2f} | 비중: {signal.position_size_pct}% | 뉴스점수: {signal.news_impact_score} | 선반영위험: {signal.priced_in_risk}")
             print(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
             print(f"   [투자 근거]: {signal.reason}")
 
@@ -624,7 +682,7 @@ def scan_market_wide_news(batch_size: int = 10):
                     payload = signal.model_dump_json()
                     producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
                     producer.flush(timeout=5)
-                    print(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} -> Core Engine 전송 완료!")
+                    print(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%) -> Core Engine 전송 완료!")
                 except Exception as ke:
                     print(f"   ⚠️ [Kafka 전송 오류]: {ke}")
             else:
@@ -639,8 +697,8 @@ def scan_market_wide_news(batch_size: int = 10):
 
 # 11. 인텔리제이 연동 테스트용 가상 시그널 발송
 def fire_sample_buy_signal(target_ticker: str = "NVDA"):
-    info = TOP_50_US_STOCKS.get(target_ticker, {"name": target_ticker, "exchange": "NASD"})
-    print(f"\n>> [테스트 모드] 실시간 {target_ticker} 현재가 조회 후 연동 검증용 BUY 시그널 생성 중...")
+    info = WATCHLIST_UNIVERSE.get(target_ticker, {"name": target_ticker, "exchange": "NASD"})
+    print(f"\n>> [테스트 모드] 실시간 {target_ticker} 현재가 조회 후 연동 검증용 다주수 비중 BUY 시그널 생성 중...")
     market_data = get_market_and_news(target_ticker)
     live_price = market_data['current_price'] if market_data else 150.00
     live_rsi = market_data.get('rsi', 52.0) if market_data else 52.0
@@ -656,18 +714,21 @@ def fire_sample_buy_signal(target_ticker: str = "NVDA"):
         stop_loss=round(live_price * 0.935, 2),  # -6.5% 손절선
         take_profit=round(live_price * 1.03, 2), # +3.0% 단기 익절선
         sentiment="POSITIVE",
-        reason=f"{info['name']} announces breakthrough enterprise growth and raised fiscal guidance beating Street estimates.",
+        reason=f"{info['name']} 차세대 AI 아키텍처 대규모 공급 체결 및 3분기 가이던스 서프라이즈 발표.",
+        news_impact_score=88,
+        priced_in_risk="LOW",
+        position_size_pct=10.0, # 2,000만원의 10% (약 200만원 분량 매수)
         rsi=live_rsi,
         ma_disparity=live_disp
     )
     payload = sample_signal.model_dump_json()
     producer.produce('stock-signals', key=sample_signal.ticker, value=payload, callback=delivery_report)
     producer.flush()
-    print(f">> [테스트 완료] 실시간 현재가(${live_price}) & RSI({live_rsi:.1f}) 기반 {target_ticker} 매수 시그널 발행 완료!")
+    print(f">> [테스트 완료] 실시간 현재가(${live_price}) & 비중(10.0%) 기반 {target_ticker} 다주수 매수 시그널 발행 완료!")
     print(f"   내용: {payload}")
 
 def fire_sample_sell_signal(target_ticker: str = "AAPL"):
-    info = TOP_50_US_STOCKS.get(target_ticker, {"name": target_ticker, "exchange": "NASD"})
+    info = WATCHLIST_UNIVERSE.get(target_ticker, {"name": target_ticker, "exchange": "NASD"})
     print(f"\n>> [테스트 모드] 실시간 {target_ticker} 긴급 탈출 SELL 시그널 생성 중...")
     market_data = get_market_and_news(target_ticker)
     live_price = market_data['current_price'] if market_data else 220.00
@@ -684,7 +745,10 @@ def fire_sample_sell_signal(target_ticker: str = "AAPL"):
         stop_loss=0.0,
         take_profit=0.0,
         sentiment="NEGATIVE",
-        reason=f"{info['name']} hit with multi-billion dollar patent infringement liability verdict causing immediate institutional exit.",
+        reason=f"{info['name']} 독점 금지법 위반 거액 과징금 및 핵심 라이선스 효력 정지 판결로 전량 청산.",
+        news_impact_score=90,
+        priced_in_risk="HIGH",
+        position_size_pct=0.0,
         rsi=live_rsi,
         ma_disparity=live_disp
     )
@@ -694,15 +758,15 @@ def fire_sample_sell_signal(target_ticker: str = "AAPL"):
     print(f">> [테스트 완료] {target_ticker} 악재 감지 긴급 매도(SELL) 시그널 발행 완료!")
     print(f"   내용: {payload}")
 
-# 10. 메인 실행 함수
+# 12. 메인 실행 함수
 def main():
-    parser = argparse.ArgumentParser(description="미국 시총 50위 AI 이벤트 드리븐 트레이딩 워커")
+    parser = argparse.ArgumentParser(description="나스닥 & 미국 주요 우량/성장주 AI 이벤트 드리븐 트레이딩 워커")
     parser.add_argument("--loop", action="store_true", help="24시간 실시간 무한 모니터링 실행")
     parser.add_argument("--interval", type=int, default=60, help="모니터링 주기 (초)")
     parser.add_argument("--test-fire", action="store_true", help="인텔리제이 연동 검증용 샘플 BUY 시그널 즉시 발송")
     parser.add_argument("--test-sell", action="store_true", help="인텔리제이 연동 검증용 긴급 악재 SELL 시그널 즉시 발송")
     parser.add_argument("--ticker", type=str, default="NVDA", help="--test-fire / --test-sell 시 사용할 종목 티커")
-    parser.add_argument("--scan-all-50", action="store_true", help="시총 50위 종목들을 하나씩 전체 순환 스캔")
+    parser.add_argument("--scan-all-universe", action="store_true", help="유니버스 전체 종목을 하나씩 순환 스캔")
     args = parser.parse_args()
 
     if args.test_sell:
@@ -714,15 +778,16 @@ def main():
         return
 
     print("==================================================")
-    print(" 🇺🇸 미국 시총 Top 50 AI 이벤트 드리븐 트레이딩 워커")
-    print(f" 유니버스: 미국 시총 상위 50개 대표 우량주 (NVDA, AAPL, MSFT, TSLA, LLY, WMT 등)")
+    print(" 🇺🇸 나스닥 & 미국 성장주 유니버스 AI 이벤트 드리븐 트레이딩 워커")
+    print(f" 유니버스: 나스닥 100 및 주요 AI/반도체/SaaS/바이오 {len(WATCHLIST_UNIVERSE)}개 종목 풀")
+    print(f" 시드머니: 20,000,000 KRW (비중 기반 동적 수량 매수)")
     print(f" 모드: {'24시간 지속 모니터링 (' + str(args.interval) + '초 간격)' if args.loop else '1회 시장 종합 스캔 모드'}")
     print("==================================================")
 
     while True:
-        if args.scan_all_50:
-            print("\n>> [시총 50위 전체 순환 스캔 시작]")
-            for ticker in list(TOP_50_US_STOCKS.keys())[:15]: # 주요 15개 먼저 순환
+        if args.scan_all_universe:
+            print(f"\n>> [전체 유니버스 {len(WATCHLIST_UNIVERSE)}개 순환 스캔 시작]")
+            for ticker in list(WATCHLIST_UNIVERSE.keys())[:20]:
                 process_single_ticker(ticker)
                 time.sleep(1)
         else:
