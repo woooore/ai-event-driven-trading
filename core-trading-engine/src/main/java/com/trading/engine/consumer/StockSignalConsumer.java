@@ -26,6 +26,8 @@ public class StockSignalConsumer {
     private final KisOrderService kisOrderService;
     private final PortfolioManager portfolioManager;
     private final RedissonClient redissonClient;
+    private final com.trading.engine.service.AnalysisLogService analysisLogService;
+    private final com.trading.engine.service.MarketBriefingService marketBriefingService;
 
     // Redisson 연결 불가 시 안전한 인메모리 쿨다운 폴백
     private final ConcurrentHashMap<String, Instant> inMemoryCooldown = new ConcurrentHashMap<>();
@@ -35,11 +37,41 @@ public class StockSignalConsumer {
             ObjectMapper objectMapper,
             KisOrderService kisOrderService,
             PortfolioManager portfolioManager,
+            com.trading.engine.service.AnalysisLogService analysisLogService,
+            com.trading.engine.service.MarketBriefingService marketBriefingService,
             @Autowired(required = false) RedissonClient redissonClient) {
         this.objectMapper = objectMapper;
         this.kisOrderService = kisOrderService;
         this.portfolioManager = portfolioManager;
+        this.analysisLogService = analysisLogService;
+        this.marketBriefingService = marketBriefingService;
         this.redissonClient = redissonClient;
+    }
+
+    /**
+     * AI 워커의 실시간 종목 감지/분석 로그 수신
+     */
+    @KafkaListener(topics = "stock-analysis-logs", groupId = "trading-engine-log-group")
+    public void consumeAnalysisLog(String message) {
+        try {
+            com.trading.engine.dto.AnalysisLogDto dto = objectMapper.readValue(message, com.trading.engine.dto.AnalysisLogDto.class);
+            analysisLogService.addLog(dto);
+        } catch (Exception e) {
+            log.error("분석 로그 Kafka 수신 오류: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * AI 워커의 1시간 단위 시장 브리핑 수신
+     */
+    @KafkaListener(topics = "market-briefings", groupId = "trading-engine-briefing-group")
+    public void consumeMarketBriefing(String message) {
+        try {
+            com.trading.engine.dto.MarketBriefingDto dto = objectMapper.readValue(message, com.trading.engine.dto.MarketBriefingDto.class);
+            marketBriefingService.addBriefing(dto);
+        } catch (Exception e) {
+            log.error("시장 브리핑 Kafka 수신 오류: {}", e.getMessage());
+        }
     }
 
     @KafkaListener(topics = "stock-signals", groupId = "trading-engine-group")
@@ -89,15 +121,15 @@ public class StockSignalConsumer {
                 return;
             }
 
-            // 3. BUY 시그널: 퀀트 기술적 지표 필터링 (2차 안전장치)
-            if (signal.getRsi() != null && signal.getRsi() >= 70.0) {
-                log.warn(">> 🛡️ [퀀트 기술적 필터 차단] {} 매수 스킵: RSI({} >= 70.0) 단기 과매수 과열! 세력 차익실현 물량받이 위험 차단. 사유: {}",
+            // 3. BUY 시그널: 퀀트 기술적 지표 필터링 (극단적 천장 과열만 차단하고 70~75.9 모멘텀은 허용)
+            if (signal.getRsi() != null && signal.getRsi() >= 76.0) {
+                log.warn(">> 🛡️ [퀀트 기술적 필터 차단] {} 매수 스킵: RSI({} >= 76.0) 극단적 단기 과매수 과열! 세력 차익실현 물량받이 위험 차단. 사유: {}",
                         ticker, String.format("%.1f", signal.getRsi()), signal.getReason());
                 return;
             }
 
-            if (signal.getMaDisparity() != null && signal.getMaDisparity() >= 110.0) {
-                log.warn(">> 🛡️ [퀀트 기술적 필터 차단] {} 매수 스킵: 20일 이격도({}% >= 110%) 급등 과열! 사유: {}",
+            if (signal.getMaDisparity() != null && signal.getMaDisparity() >= 115.0) {
+                log.warn(">> 🛡️ [퀀트 기술적 필터 차단] {} 매수 스킵: 20일 이격도({}% >= 115%) 급등 과열! 사유: {}",
                         ticker, String.format("%.1f", signal.getMaDisparity()), signal.getReason());
                 return;
             }

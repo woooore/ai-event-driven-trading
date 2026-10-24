@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import re
+from datetime import datetime
 from typing import List, Optional, Dict
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -18,11 +19,16 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
 
+def log_ts(msg: str):
+    """실시간 타임스탬프가 포함된 로그 출력"""
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{now_str}] {msg}")
+
 # 1. 환경변수 및 OpenAI 클라이언트 초기화
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
-    print("[경고] OPENAI_API_KEY가 .env 파일에 설정되지 않았습니다.")
+    log_ts("[경고] OPENAI_API_KEY가 .env 파일에 설정되지 않았습니다.")
 client = OpenAI(api_key=api_key)
 
 # 2. 나스닥 100 및 미국 대표 우량/성장주 유니버스 풀 (NASDAQ & Tech Top 100)
@@ -344,18 +350,95 @@ class StockSignal(BaseModel):
     atr_pct: Optional[float] = Field(default=None, description="14일 ATR 변동성 비율 (%)")
     quant_score: Optional[int] = Field(default=None, description="종합 퀀트 알파 스코어 (0~100점)")
 
+# 5-2. 1시간 단위 AI 글로벌 시장 브리핑 Pydantic 스키마
+class MarketBriefingItem(BaseModel):
+    time: str = Field(description="1시간 단위 시각 (예: 06:00, 05:00, 20:00 등)")
+    title: str = Field(description="글로벌 시장 핵심 1줄 헤드라인 (예: 금리 상승에 다우 약세, 반도체만 버틴 혼조 마감)")
+    bullets: List[str] = Field(description="시장 요약 핵심 3문장 불릿 (친근하고 자연스러운 '~했어요', '~나왔어요' 말투)")
+    category: str = Field(default="혼조", description="호재, 악재, 혼조 중 하나")
+
 # 6. Kafka Producer 설정
+kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
 conf = {
-    'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', '127.0.0.1:9092'),
+    'bootstrap.servers': kafka_servers,
     'client.id': 'ai-signal-worker'
 }
 producer = Producer(conf)
 
 def delivery_report(err, msg):
     if err is not None:
-        print(f">> [Kafka 전송 실패]: {err}")
+        log_ts(f"⚠️ [Kafka 전송 실패]: {err}")
     else:
-        print(f">> [Kafka 전송 완료] Topic: {msg.topic()} | Partition: [{msg.partition()}]")
+        pass # 정상 전송 시 로그 간소화
+
+last_briefing_hour = -1
+recent_market_headlines: List[str] = []
+
+def record_headline_for_briefing(headline: str):
+    if headline and headline not in recent_market_headlines:
+        recent_market_headlines.append(headline)
+        if len(recent_market_headlines) > 30:
+            recent_market_headlines.pop(0)
+
+def maybe_generate_hourly_briefing(force: bool = False):
+    """매 1시간마다 감지된 글로벌 뉴스를 토대로 1시간 단위 AI 브리핑을 생성하여 Kafka로 발행"""
+    global last_briefing_hour
+    now = datetime.now()
+    current_hour = now.hour
+
+    if not force and current_hour == last_briefing_hour:
+        return
+
+    if not recent_market_headlines and not force:
+        return
+
+    log_ts(f"✨ [AI 글로벌 브리핑 생성 시작] {now.strftime('%H:00')} 기준 최근 {len(recent_market_headlines)}건의 시장 속보 요약 중...")
+    news_context = "\n".join([f"- {h}" for h in recent_market_headlines[-15:]])
+    if not news_context:
+        news_context = "- 미국 주요 증시 혼조세 속 AI 및 반도체 테크주 중심 차별화 장세 진행 중"
+
+    briefing_prompt = f"""
+너는 토스증권/월가 수준의 최고급 생성형 AI 글로벌 증시 브리퍼다.
+현재 시각 {now.strftime('%H:00')} 기준, 지난 1시간 동안 포착된 미국 증시/글로벌 핵심 속보들을 종합하여
+사용자에게 친근하고 직관적인 '1시간 단위 AI 브리핑'을 1개 작성하라.
+
+[작성 규칙]:
+1. title: 1줄의 핵심 헤드라인 (예: '금리 상승에 다우 약세, 반도체만 버틴 혼조 마감', '다우 1%대 하락 속 SOX 상승, 금리·유가 부담에 경기민감주 눌림')
+2. bullets: 반드시 3개의 명확한 요약 문장 리스트
+   - 각 문장은 자연스럽고 친근한 '~했어요', '~나왔어요', '~눌렀어요', '~지키고 있어요' 어미로 끝낼 것.
+   - 첫 번째 줄: 시장 전체 분위기나 주요 지수 동향
+   - 두 번째 줄: 금리, 유가, 달러 또는 매크로/섹터 부담 요인
+   - 세 번째 줄: 반도체/AI/빅테크 등 차별화 종목이나 특징주 흐름
+3. category: '호재', '악재', '혼조' 중 택 1
+
+[최근 1시간 시장 속보들]:
+{news_context}
+"""
+    try:
+        resp = client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": briefing_prompt}],
+            response_format=MarketBriefingItem
+        )
+        item: MarketBriefingItem = resp.choices[0].message.parsed
+        item.time = now.strftime("%H:00")
+
+        briefing_payload = {
+            "id": f"b-{int(time.time())}",
+            "date": now.strftime("%Y. %m. %d."),
+            "time": item.time,
+            "title": item.title,
+            "bullets": item.bullets,
+            "category": item.category,
+            "timestamp": int(time.time() * 1000)
+        }
+
+        producer.produce('market-briefings', key=item.time, value=json.dumps(briefing_payload, ensure_ascii=False), callback=delivery_report)
+        producer.flush(timeout=5)
+        last_briefing_hour = current_hour
+        log_ts(f"📢 [AI 1시간 브리핑 발행 완료] {item.time} | {item.title}")
+    except Exception as be:
+        log_ts(f"[AI 브리핑 생성 오류]: {be}")
 
 # 7. 종목별 시세, 기술적 지표 및 뉴스 수집기
 def get_market_and_news(ticker: str, custom_news_list: Optional[List[dict]] = None):
@@ -471,24 +554,25 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
     system_prompt = (
         "너는 미국 월스트리트 최상위 헤지펀드의 시니어 이벤트 드리븐(Event-Driven) & 퀀트(Quant) 트레이더다.\n"
         "주어진 미국 주식의 현재가, 당일 변동률, 종합 퀀트 지표(RSI, 볼린저 밴드 %B, MACD, ATR, 퀀트 스코어), 과거 실패 매매 일지(RAG), 그리고 최신 뉴스를 종합 분석하여 트레이딩 결정을 내려라.\n\n"
-        "【핵심 원칙: 기술적 지표 단독 매수 절대 금지 & 뉴스 팩트 촉매 필수】:\n"
-        "- 볼린저 밴드 하단(%B 낮음)이나 RSI 과매도라는 이유만으로 매수(BUY)하는 것은 엄격히 금지된다!\n"
-        "- 반드시 주가를 실제로 밀어올릴 '강력하고 새로운 펀더멘털 뉴스 팩트 촉매(Catalyst)'가 존재할 때만 매수하라.\n\n"
+        "【핵심 매매 원칙: 팩트 호재 우선 & 유연한 분할 매수 집행】:\n"
+        "- 볼린저 밴드 하단이나 과매도 지표만 보고 매수하는 기술적 단독 매수는 금지된다. 반드시 실질적인 펀더멘털 뉴스 팩트 촉매가 결합되어야 한다.\n"
+        "- 반대로, 구체적인 실적 서프라이즈, 매출/이익 가이던스 상향(예: 슈퍼마이크로 40억 달러 매출 상향 등), 대규모 공급/수주 계약 체결 등 명확한 팩트 호재가 포착되면, 지나치게 '선반영'을 핑계로 매수를 망설이지 말라!\n"
+        "- 확실한 팩트가 있는 우량주는 호재 발표 후 모멘텀을 타고 추가 상승하는 경향이 강하므로, 당일 주가가 +4.5% 이상 폭등하지 않았다면 적극적으로 분할 매수(action='BUY', confidence >= 0.75, position_size_pct: 4.0~10.0%) 결정을 내려라.\n\n"
         "【필수 매매 규칙 & 손실 방어 원칙】:\n"
         "1. [뉴스 촉매 영향도 평가 (news_impact_score: 0~100)]:\n"
-        "   - 단순 시황 중계, 애널리스트 목표가 상향, 정량적 수치 없는 단순 기대감(Hope, Outlook), 루머는 50점 이하.\n"
-        "   - 구체적인 어닝 서프라이즈 실적, 대형 공급/수주 계약, 신제품/신약 FDA 승인 등 실질적 펀더멘털 변화는 70점 이상.\n"
-        "   - ★ BUY 액션은 반드시 news_impact_score >= 65 이상일 때만 허용된다!\n"
-        "2. [선반영(Priced-in) 및 '뉴스에 팔아라' 매물 출회 철저 방어 (priced_in_risk: LOW / MEDIUM / HIGH)]:\n"
-        "   - 호재 뉴스가 있더라도 이미 당일 주가가 크게 급등했거나(+3.5% 이상), 뉴스가 이미 며칠 전부터 거론되어 시장에 선반영된 경우 priced_in_risk='HIGH' 또는 'MEDIUM'으로 지정하라.\n"
-        "   - 선반영 위험(priced_in_risk)이 HIGH이면 '뉴스에 팔아라(Sell the News)' 차익실현 매물받이가 되므로 무조건 action='HOLD'로 결정하라!\n"
-        "3. [기술적 과매수 / 상단 밴드 과열 추격 매수 절대 금지]:\n"
-        "   - RSI(14)가 70.0 이상이거나 볼린저 밴드 %B가 0.95 이상이면 단기 과열이다. 뉴스가 좋아도 추격 매수하지 말고 action='HOLD'로 결정하라.\n"
+        "   - 단순 시황 중계, 애널리스트 의견, 근거 없는 루머는 50점 이하.\n"
+        "   - 구체적인 실적 호조, 대형 수주/공급 계약, 규제 승인 등 실질적 펀더멘털 변화는 65점 이상.\n"
+        "   - ★ BUY 액션은 news_impact_score >= 60 이상일 때 허용된다.\n"
+        "2. [선반영(Priced-in) 평가 (priced_in_risk: LOW / MEDIUM / HIGH)]:\n"
+        "   - 이미 당일 주가가 +4.5% 이상 급등했거나, 수일 전부터 시장에 완전히 퍼져 차익실현 매물 출회가 임박한 경우에만 priced_in_risk='HIGH'로 지정하고 HOLD하라.\n"
+        "   - 신선한 호재이거나 당일 주가 상승폭이 완만한 경우(+4.5% 미만)는 LOW 또는 MEDIUM으로 평가하고 적극 분할 매수하라.\n"
+        "3. [기술적 과매수 기준]:\n"
+        "   - RSI(14)가 76.0 이상인 극단적 과열 구간이거나 볼린저 밴드 상단 완전 이탈(%B >= 1.05) 시에만 추격 매수를 자제하고 HOLD하라. (RSI 65~75는 강한 모멘텀 구간으로 팩트 호재 시 매수 가능)\n"
         "4. [비중 배분 산정 (position_size_pct: 3.0 ~ 15.0%)]:\n"
         "   - 총 시드 2,000만원 기준 종목당 권장 투자 비중.\n"
-        "   - 특급 호재(news_impact_score >= 85) + 낮은 선반영 위험(LOW) + 양호한 기술적 위치 => 10.0 ~ 15.0% (다수 주 매수)\n"
-        "   - 일반 우량 호재(news_impact_score 70~84) => 6.0 ~ 10.0%\n"
-        "   - 신중한 분할 진입 => 3.0 ~ 5.0%\n"
+        "   - 특급 팩트 호재(news_impact_score >= 80) + 양호한 기술적 위치 => 8.0 ~ 12.0%\n"
+        "   - 일반 우량 호재(news_impact_score 60~79) => 4.0 ~ 7.0%\n"
+        "   - 신중한 분할 진입 => 3.0 ~ 4.0%\n"
         "   - HOLD 또는 SELL일 경우 position_size_pct = 0.0\n"
         "5. [악재 감지 시 즉시 긴급 탈출 SELL]:\n"
         "   - 대규모 소송 패소, 거액 과징금, 실적 쇼크, 회계 부정, 규제 제재 시 즉시 action='SELL', confidence >= 0.75로 전량 탈출하라.\n"
@@ -497,7 +581,7 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         f"   - take_profit: ATR 변동성 기반 동적 익절가 (${dynamic_tp})\n"
         f"   - stop_loss: ATR 변동성 기반 동적 손절가 (${dynamic_sl})\n"
         f"   - exchange: '{exchange}'\n"
-        "7. reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 뉴스 팩트, 선반영 여부, 기술적 지표를 함께 언급하여 명확히 작성하라. (절대 영어가 아닌 한국어로 작성할 것)"
+        "7. reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 뉴스 팩트, 선반영 판단, 기술적 상태를 함께 언급하여 명확히 작성하라. (절대 영어가 아닌 한국어로 작성할 것)"
     )
 
     user_prompt = f"""
@@ -533,41 +617,41 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
 
         # 1차: 뉴스 팩트 촉매 및 선반영 하드 안전장치
         if signal.action == "BUY":
-            # 1. 뉴스 촉매 강도 미달 차단 (기술적 지표만 보고 매수하는 오판 방어)
-            if signal.news_impact_score is not None and signal.news_impact_score < 65:
-                print(f"   🛡️ [뉴스 촉매 부족 차단] {ticker} 뉴스 영향도({signal.news_impact_score}점) < 65! 단순 밴드/노이즈 매수 차단 -> HOLD 전환")
+            # 1. 뉴스 촉매 강도 미달 차단 (최소 60점 이상 필요)
+            if signal.news_impact_score is not None and signal.news_impact_score < 60:
+                log_ts(f"   🛡️ [뉴스 촉매 부족 차단] {ticker} 뉴스 영향도({signal.news_impact_score}점) < 60! 단순 밴드/노이즈 매수 차단 -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
                 signal.reason = f"[실질 뉴스 촉매 부족] 뉴스 영향도 {signal.news_impact_score}점으로 펀더멘털 호재 팩트 미비. {signal.reason}"
 
-            # 2. 선반영(Priced-in) 및 '뉴스에 팔아라' 매물받이 차단
-            elif signal.priced_in_risk == "HIGH" or (signal.priced_in_risk == "MEDIUM" and pct_change >= 3.5):
-                print(f"   🛡️ [선반영(Priced-in) 차단] {ticker} 선반영 위험({signal.priced_in_risk}, 변동률 {pct_change:+}%). 차익실현 매물받이 방지 -> HOLD 전환")
+            # 2. 선반영(Priced-in) 및 '뉴스에 팔아라' 매물받이 차단 (HIGH 이거나 MEDIUM이면서 +4.5% 이상 폭등 시)
+            elif signal.priced_in_risk == "HIGH" or (signal.priced_in_risk == "MEDIUM" and pct_change >= 4.5):
+                log_ts(f"   🛡️ [선반영(Priced-in) 차단] {ticker} 선반영 위험({signal.priced_in_risk}, 변동률 {pct_change:+}%). 차익실현 매물받이 방지 -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
                 signal.reason = f"[선반영 위험 차단] 호재가 주가에 이미 선반영되었거나 당일 급등({pct_change:+}%)으로 차익실현 위험. {signal.reason}"
 
-            # 3. 기술적 과매수 차단
-            elif rsi is not None and rsi >= 70.0:
-                print(f"   🛡️ [기술적 과매수 차단] {ticker} RSI({rsi:.1f}) >= 70 과열! 세력 매물받이 방어로 HOLD 전환")
+            # 3. 기술적 극단 과매수 차단 (76 이상)
+            elif rsi is not None and rsi >= 76.0:
+                log_ts(f"   🛡️ [기술적 과매수 차단] {ticker} RSI({rsi:.1f}) >= 76 극단 과열! 세력 매물받이 방어로 HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
-                signal.reason = f"[기술적 과매수 차단] RSI({rsi:.1f})가 70 이상 과열 상태로 단기 고점 세력 차익실현 덤핑 위험. {signal.reason}"
+                signal.reason = f"[기술적 과매수 차단] RSI({rsi:.1f})가 76 이상 극단적 과열 상태로 단기 고점 세력 차익실현 덤핑 위험. {signal.reason}"
 
-            # 4. 볼린저 상단 이탈 과열 차단
-            elif bollinger_b is not None and bollinger_b >= 1.0:
-                print(f"   🛡️ [볼린저 상단 과열 차단] {ticker} 볼린저 밴드 상단 이탈(%B={bollinger_b}) 과열! HOLD 전환")
+            # 4. 볼린저 상단 이탈 과열 차단 (%B >= 1.05)
+            elif bollinger_b is not None and bollinger_b >= 1.05:
+                log_ts(f"   🛡️ [볼린저 상단 과열 차단] {ticker} 볼린저 밴드 상단 이탈(%B={bollinger_b}) 과열! HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
-                signal.reason = f"[볼린저 밴드 상단 과열 차단] 주가가 볼린저 상단을 돌파(%B {bollinger_b})하여 조정 압력 우려. {signal.reason}"
+                signal.reason = f"[볼린저 밴드 상단 과열 차단] 주가가 볼린저 상단을 크게 돌파(%B {bollinger_b})하여 조정 압력 우려. {signal.reason}"
 
             # 5. 퀀트 스코어 미달 차단
-            elif quant_score < 50:
-                print(f"   🛡️ [퀀트 알파 스코어 차단] {ticker} 퀀트 점수({quant_score}점) 저조로 HOLD 전환")
+            elif quant_score < 45:
+                log_ts(f"   🛡️ [퀀트 알파 스코어 차단] {ticker} 퀀트 점수({quant_score}점) 저조로 HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
@@ -575,7 +659,7 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
 
         return signal
     except Exception as e:
-        print(f"[AI 분석 실패] {ticker}: {e}")
+        log_ts(f"[AI 분석 실패] {ticker}: {e}")
         return None
 
 # 9. 중복 기사 캐시 (해시와 함께 타임스탬프 기록 -> 4시간 경과 시 만료되어 주가/지표 변화 반영 재평가 가능)
@@ -603,9 +687,12 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
     if is_content_analyzed(content_hash):
         return
 
+    headline = market_data['news'][0]['title']
+    record_headline_for_briefing(headline)
+
     tech_info = f"RSI: {market_data['rsi']:.1f}" if market_data.get('rsi') else "RSI: N/A"
-    print(f"\n>> [속보 포착] {ticker} ({TOP_50_US_STOCKS.get(ticker, {}).get('name', ticker)}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
-    print(f"   뉴스 헤드라인: {market_data['news'][0]['title'][:70]}...")
+    log_ts(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({WATCHLIST_UNIVERSE.get(ticker, {}).get('name', ticker)}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
+    log_ts(f"   헤드라인: {headline[:80]}")
 
     signal = evaluate_market_and_trade(market_data)
     if not signal:
@@ -613,21 +700,50 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
 
     mark_content_analyzed(content_hash)
 
-    print(f"   [AI 판단] 액션: {signal.action} | 확신도: {signal.confidence:.2f} | 감성: {signal.sentiment}")
-    print(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
-    print(f"   [투자 근거]: {signal.reason}")
+    log_ts(f"   [AI 판단] {signal.action} | 확신도: {signal.confidence:.2f} | 비중: {signal.position_size_pct}% | 뉴스점수: {signal.news_impact_score} | 선반영위험: {signal.priced_in_risk}")
+    log_ts(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
+    log_ts(f"   [투자 근거]: {signal.reason}")
 
-    # BUY or SELL & 확신도 >= 0.70 일 때만 Kafka 전송
-    if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.70:
+    # ★ 웹 대시보드 실시간 로그 탭을 위해 모든 분석 결과(HOLD 포함)를 Kafka로 전송
+    try:
+        now_dt = datetime.now()
+        analysis_log_payload = {
+            "id": f"al-{int(time.time() * 1000)}",
+            "timestamp": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
+            "date": now_dt.strftime("%Y-%m-%d"),
+            "time": now_dt.strftime("%H:%M:%S"),
+            "ticker": signal.ticker,
+            "stock_name": signal.stock_name,
+            "action": signal.action,
+            "confidence": round(signal.confidence, 2),
+            "news_impact_score": signal.news_impact_score,
+            "priced_in_risk": signal.priced_in_risk,
+            "position_size_pct": signal.position_size_pct,
+            "order_price": signal.order_price,
+            "pct_change": market_data['pct_change'],
+            "headline": headline,
+            "reason": signal.reason,
+            "rsi": signal.rsi,
+            "ma_disparity": signal.ma_disparity,
+            "bollinger_b": signal.bollinger_b,
+            "quant_score": signal.quant_score
+        }
+        producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)
+        producer.flush(timeout=3)
+    except Exception as le:
+        log_ts(f"   ⚠️ [분석 로그 Kafka 전송 실패]: {le}")
+
+    # BUY or SELL & 확신도 >= 0.65 일 때 트레이딩 엔진 주문 Kafka 전송
+    if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.65:
         try:
             payload = signal.model_dump_json()
             producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
             producer.flush(timeout=5)
-            print(f"   🚀 [시그널 발행 완료] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%, 뉴스점수 {signal.news_impact_score}) -> Core Engine(2,000만원 포트폴리오) 전송 완료!")
+            log_ts(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%, 확신도 {signal.confidence:.2f}) -> Core Engine 전송 완료!")
         except Exception as ke:
-            print(f"   ⚠️ [Kafka 전송 오류]: {ke}")
+            log_ts(f"   ⚠️ [Kafka 전송 오류]: {ke}")
     else:
-        print(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
+        log_ts(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
 # 10. 실시간 전체 시장 종합 속보 스캐너 (나스닥 & 우량/성장주 유니버스 10개씩 라운드로빈 순환)
 def scan_market_wide_news(batch_size: int = 10):
@@ -635,6 +751,9 @@ def scan_market_wide_news(batch_size: int = 10):
     global current_scan_offset
     all_tickers = list(WATCHLIST_UNIVERSE.keys())
     total_tickers = len(all_tickers)
+
+    # 매 1시간마다 글로벌 AI 브리핑 자동 발행 검사
+    maybe_generate_hourly_briefing()
 
     # 유니버스 종목을 10개씩 회전(Rolling)하면서 순환
     start_idx = current_scan_offset % total_tickers
@@ -647,8 +766,8 @@ def scan_market_wide_news(batch_size: int = 10):
 
     current_scan_offset = (current_scan_offset + batch_size) % total_tickers
 
-    print(f"\n>> 🌐 [나스닥/미국 우량 유니버스 라운드로빈 스캔 ({start_idx + 1}~{min(start_idx + batch_size, total_tickers)}/{total_tickers}번째 종목)]")
-    print(f"   스캔 대상: {', '.join(target_batch)}")
+    log_ts(f"\n>> 🌐 [나스닥/미국 우량 유니버스 라운드로빈 스캔 ({start_idx + 1}~{min(start_idx + batch_size, total_tickers)}/{total_tickers}번째 종목)]")
+    log_ts(f"   스캔 대상: {', '.join(target_batch)}")
 
     analyzed_count = 0
     for ticker in target_batch:
@@ -663,9 +782,12 @@ def scan_market_wide_news(batch_size: int = 10):
                 continue
 
             analyzed_count += 1
+            headline = market_data['news'][0]['title']
+            record_headline_for_briefing(headline)
+
             tech_info = f"RSI: {market_data['rsi']:.1f}" if market_data.get('rsi') else "RSI: N/A"
-            print(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({WATCHLIST_UNIVERSE.get(ticker, {}).get('name', ticker)}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
-            print(f"   헤드라인: {market_data['news'][0]['title'][:80]}")
+            log_ts(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({WATCHLIST_UNIVERSE.get(ticker, {}).get('name', ticker)}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
+            log_ts(f"   헤드라인: {headline[:80]}")
 
             signal = evaluate_market_and_trade(market_data)
             if not signal:
@@ -673,32 +795,62 @@ def scan_market_wide_news(batch_size: int = 10):
 
             mark_content_analyzed(content_hash)
 
-            print(f"   [AI 판단] {signal.action} | 확신도: {signal.confidence:.2f} | 비중: {signal.position_size_pct}% | 뉴스점수: {signal.news_impact_score} | 선반영위험: {signal.priced_in_risk}")
-            print(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
-            print(f"   [투자 근거]: {signal.reason}")
+            log_ts(f"   [AI 판단] {signal.action} | 확신도: {signal.confidence:.2f} | 비중: {signal.position_size_pct}% | 뉴스점수: {signal.news_impact_score} | 선반영위험: {signal.priced_in_risk}")
+            log_ts(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
+            log_ts(f"   [투자 근거]: {signal.reason}")
 
-            if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.70:
+            # 웹 대시보드 실시간 로그 탭을 위해 모든 분석 결과(HOLD 포함)를 Kafka로 전송
+            try:
+                now_dt = datetime.now()
+                analysis_log_payload = {
+                    "id": f"al-{int(time.time() * 1000)}",
+                    "timestamp": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    "date": now_dt.strftime("%Y-%m-%d"),
+                    "time": now_dt.strftime("%H:%M:%S"),
+                    "ticker": signal.ticker,
+                    "stock_name": signal.stock_name,
+                    "action": signal.action,
+                    "confidence": round(signal.confidence, 2),
+                    "news_impact_score": signal.news_impact_score,
+                    "priced_in_risk": signal.priced_in_risk,
+                    "position_size_pct": signal.position_size_pct,
+                    "order_price": signal.order_price,
+                    "pct_change": market_data['pct_change'],
+                    "headline": headline,
+                    "reason": signal.reason,
+                    "rsi": signal.rsi,
+                    "ma_disparity": signal.ma_disparity,
+                    "bollinger_b": signal.bollinger_b,
+                    "quant_score": signal.quant_score
+                }
+                producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)
+                producer.flush(timeout=3)
+            except Exception as le:
+                log_ts(f"   ⚠️ [분석 로그 Kafka 전송 실패]: {le}")
+
+            # BUY or SELL & 확신도 >= 0.65 일 때 트레이딩 엔진 주문 전송
+            if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.65:
                 try:
                     payload = signal.model_dump_json()
                     producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
                     producer.flush(timeout=5)
-                    print(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%) -> Core Engine 전송 완료!")
+                    log_ts(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%, 확신도 {signal.confidence:.2f}) -> Core Engine 전송 완료!")
                 except Exception as ke:
-                    print(f"   ⚠️ [Kafka 전송 오류]: {ke}")
+                    log_ts(f"   ⚠️ [Kafka 전송 오류]: {ke}")
             else:
-                print(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
+                log_ts(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
             time.sleep(1) # API 레이트리밋 보호
         except Exception as e:
-            print(f"[{ticker} 스캔 오류] {e}")
+            log_ts(f"[{ticker} 스캔 오류] {e}")
 
     if analyzed_count == 0:
-        print(f">> [스캔 결과] 해당 배치({len(target_batch)}개 종목)는 기존 분석 유효 범위 내. 다음 주기에 다음 배치 종목 스캔 대기")
+        log_ts(f">> [스캔 결과] 해당 배치({len(target_batch)}개 종목)는 기존 분석 유효 범위 내. 다음 주기에 다음 배치 종목 스캔 대기")
 
 # 11. 인텔리제이 연동 테스트용 가상 시그널 발송
 def fire_sample_buy_signal(target_ticker: str = "NVDA"):
     info = WATCHLIST_UNIVERSE.get(target_ticker, {"name": target_ticker, "exchange": "NASD"})
-    print(f"\n>> [테스트 모드] 실시간 {target_ticker} 현재가 조회 후 연동 검증용 다주수 비중 BUY 시그널 생성 중...")
+    log_ts(f"\n>> [테스트 모드] 실시간 {target_ticker} 현재가 조회 후 연동 검증용 다주수 비중 BUY 시그널 생성 중...")
     market_data = get_market_and_news(target_ticker)
     live_price = market_data['current_price'] if market_data else 150.00
     live_rsi = market_data.get('rsi', 52.0) if market_data else 52.0
@@ -724,12 +876,12 @@ def fire_sample_buy_signal(target_ticker: str = "NVDA"):
     payload = sample_signal.model_dump_json()
     producer.produce('stock-signals', key=sample_signal.ticker, value=payload, callback=delivery_report)
     producer.flush()
-    print(f">> [테스트 완료] 실시간 현재가(${live_price}) & 비중(10.0%) 기반 {target_ticker} 다주수 매수 시그널 발행 완료!")
-    print(f"   내용: {payload}")
+    log_ts(f">> [테스트 완료] 실시간 현재가(${live_price}) & 비중(10.0%) 기반 {target_ticker} 다주수 매수 시그널 발행 완료!")
+    log_ts(f"   내용: {payload}")
 
 def fire_sample_sell_signal(target_ticker: str = "AAPL"):
     info = WATCHLIST_UNIVERSE.get(target_ticker, {"name": target_ticker, "exchange": "NASD"})
-    print(f"\n>> [테스트 모드] 실시간 {target_ticker} 긴급 탈출 SELL 시그널 생성 중...")
+    log_ts(f"\n>> [테스트 모드] 실시간 {target_ticker} 긴급 탈출 SELL 시그널 생성 중...")
     market_data = get_market_and_news(target_ticker)
     live_price = market_data['current_price'] if market_data else 220.00
     live_rsi = market_data.get('rsi', 65.0) if market_data else 65.0
@@ -755,8 +907,8 @@ def fire_sample_sell_signal(target_ticker: str = "AAPL"):
     payload = sample_signal.model_dump_json()
     producer.produce('stock-signals', key=sample_signal.ticker, value=payload, callback=delivery_report)
     producer.flush()
-    print(f">> [테스트 완료] {target_ticker} 악재 감지 긴급 매도(SELL) 시그널 발행 완료!")
-    print(f"   내용: {payload}")
+    log_ts(f">> [테스트 완료] {target_ticker} 악재 감지 긴급 매도(SELL) 시그널 발행 완료!")
+    log_ts(f"   내용: {payload}")
 
 # 12. 메인 실행 함수
 def main():
@@ -767,7 +919,12 @@ def main():
     parser.add_argument("--test-sell", action="store_true", help="인텔리제이 연동 검증용 긴급 악재 SELL 시그널 즉시 발송")
     parser.add_argument("--ticker", type=str, default="NVDA", help="--test-fire / --test-sell 시 사용할 종목 티커")
     parser.add_argument("--scan-all-universe", action="store_true", help="유니버스 전체 종목을 하나씩 순환 스캔")
+    parser.add_argument("--test-briefing", action="store_true", help="1시간 단위 AI 브리핑 즉시 생성 테스트")
     args = parser.parse_args()
+
+    if args.test_briefing:
+        maybe_generate_hourly_briefing(force=True)
+        return
 
     if args.test_sell:
         fire_sample_sell_signal(args.ticker if args.ticker != "NVDA" else "AAPL")
@@ -777,16 +934,19 @@ def main():
         fire_sample_buy_signal(args.ticker)
         return
 
-    print("==================================================")
-    print(" 🇺🇸 나스닥 & 미국 성장주 유니버스 AI 이벤트 드리븐 트레이딩 워커")
-    print(f" 유니버스: 나스닥 100 및 주요 AI/반도체/SaaS/바이오 {len(WATCHLIST_UNIVERSE)}개 종목 풀")
-    print(f" 시드머니: 20,000,000 KRW (비중 기반 동적 수량 매수)")
-    print(f" 모드: {'24시간 지속 모니터링 (' + str(args.interval) + '초 간격)' if args.loop else '1회 시장 종합 스캔 모드'}")
-    print("==================================================")
+    log_ts("==================================================")
+    log_ts(" 🇺🇸 나스닥 & 미국 성장주 유니버스 AI 이벤트 드리븐 트레이딩 워커")
+    log_ts(f" 유니버스: 나스닥 100 및 주요 AI/반도체/SaaS/바이오 {len(WATCHLIST_UNIVERSE)}개 종목 풀")
+    log_ts(f" 시드머니: 20,000,000 KRW (비중 기반 동적 수량 매수)")
+    log_ts(f" 모드: {'24시간 지속 모니터링 (' + str(args.interval) + '초 간격)' if args.loop else '1회 시장 종합 스캔 모드'}")
+    log_ts("==================================================")
+
+    # 기동 시 첫 1회 브리핑 생성 시도
+    maybe_generate_hourly_briefing(force=False)
 
     while True:
         if args.scan_all_universe:
-            print(f"\n>> [전체 유니버스 {len(WATCHLIST_UNIVERSE)}개 순환 스캔 시작]")
+            log_ts(f"\n>> [전체 유니버스 {len(WATCHLIST_UNIVERSE)}개 순환 스캔 시작]")
             for ticker in list(WATCHLIST_UNIVERSE.keys())[:20]:
                 process_single_ticker(ticker)
                 time.sleep(1)
@@ -794,10 +954,10 @@ def main():
             scan_market_wide_news()
 
         if not args.loop:
-            print("\n>> 1회 스캔이 완료되었습니다. 24시간 실시간 모니터링을 원하시면 --loop 옵션을 사용하세요.")
+            log_ts("\n>> 1회 스캔이 완료되었습니다. 24시간 실시간 모니터링을 원하시면 --loop 옵션을 사용하세요.")
             break
 
-        print(f"\n다음 시장 뉴스 스캔까지 {args.interval}초 대기 중...")
+        log_ts(f"\n다음 시장 뉴스 스캔까지 {args.interval}초 대기 중...")
         time.sleep(args.interval)
 
 if __name__ == "__main__":
