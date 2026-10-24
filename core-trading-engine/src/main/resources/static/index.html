@@ -2285,12 +2285,18 @@
       }).join('');
     }
 
-    // 3초마다 실시간 대시보드 자동 폴링
+    // 초기 로딩: 대시보드, AI 브리핑, 실시간 분석 로그 즉시 로드
     fetchDashboard();
+    fetchBriefings();
+    loadAnalysisLogs();
+
+    // 3초마다 실시간 대시보드 및 현재 활성 탭 자동 동기화
     setInterval(() => {
       fetchDashboard();
       if (currentMainTab === 'logs') {
         loadAnalysisLogs(currentLogDate);
+      } else if (currentMainTab === 'briefing') {
+        fetchBriefings(currentBriefingDate);
       }
     }, 3000);
   </script>

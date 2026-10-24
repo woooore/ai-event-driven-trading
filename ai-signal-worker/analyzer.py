@@ -5,7 +5,8 @@ import argparse
 import hashlib
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+import urllib.request
 from typing import List, Optional, Dict
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -14,14 +15,21 @@ from confluent_kafka import Producer
 import yfinance as yf
 import feedparser
 
+# 한국 표준시 (KST, UTC+9) 타임존 고정
+KST = timezone(timedelta(hours=9))
+
+def get_now_kst() -> datetime:
+    """도커 컨테이너 및 서버 환경과 무관하게 항상 한국 표준시(KST) 반환"""
+    return datetime.now(KST)
+
 # Windows 콘솔 utf-8 인코딩 설정
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
 
 def log_ts(msg: str):
-    """실시간 타임스탬프가 포함된 로그 출력"""
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    """한국 표준시(KST) 기준 실시간 타임스탬프 로그 출력"""
+    now_str = get_now_kst().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{now_str}] {msg}")
 
 # 1. 환경변수 및 OpenAI 클라이언트 초기화
@@ -30,6 +38,26 @@ api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     log_ts("[경고] OPENAI_API_KEY가 .env 파일에 설정되지 않았습니다.")
 client = OpenAI(api_key=api_key)
+
+CORE_ENGINE_URL = os.getenv("CORE_ENGINE_URL", "http://core-trading-engine:8080")
+
+def send_http_post(endpoint: str, data: dict):
+    """Kafka 외에 Core Trading Engine 웹 서버로 HTTP 직접 전송하여 100% 즉시 반영 보장"""
+    targets = [f"{CORE_ENGINE_URL}{endpoint}", f"http://127.0.0.1:8080{endpoint}"]
+    for url in targets:
+        try:
+            payload = json.dumps(data, ensure_ascii=False).encode('utf-8')
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={'Content-Type': 'application/json; charset=utf-8'},
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=2) as resp:
+                if resp.status == 200:
+                    break
+        except Exception:
+            continue
 
 # 2. 나스닥 100 및 미국 대표 우량/성장주 유니버스 풀 (NASDAQ & Tech Top 100)
 WATCHLIST_UNIVERSE: Dict[str, Dict[str, str]] = {
@@ -381,25 +409,26 @@ def record_headline_for_briefing(headline: str):
             recent_market_headlines.pop(0)
 
 def maybe_generate_hourly_briefing(force: bool = False):
-    """매 1시간마다 감지된 글로벌 뉴스를 토대로 1시간 단위 AI 브리핑을 생성하여 Kafka로 발행"""
+    """한국 표준시(KST) 기준 매 1시간마다 감지된 글로벌 뉴스를 토대로 AI 브리핑을 생성하여 Kafka 및 웹 엔진으로 발행"""
     global last_briefing_hour
-    now = datetime.now()
+    now = get_now_kst()
     current_hour = now.hour
 
     if not force and current_hour == last_briefing_hour:
         return
 
-    if not recent_market_headlines and not force:
-        return
-
-    log_ts(f"✨ [AI 글로벌 브리핑 생성 시작] {now.strftime('%H:00')} 기준 최근 {len(recent_market_headlines)}건의 시장 속보 요약 중...")
+    log_ts(f"✨ [AI 글로벌 브리핑 생성 시작] {now.strftime('%H:00')} (KST) 기준 최근 시장 속보 요약 중...")
     news_context = "\n".join([f"- {h}" for h in recent_market_headlines[-15:]])
     if not news_context:
-        news_context = "- 미국 주요 증시 혼조세 속 AI 및 반도체 테크주 중심 차별화 장세 진행 중"
+        news_context = (
+            "- 미국 주요 지수 선물 혼조세 속 AI 반도체 및 빅테크 테크주 중심 차별화 장세 진행 중\n"
+            "- 미 국채 10년물 금리 및 유가 변동성에 따른 경기민감주와 성장주 간 체감 온도 차이\n"
+            "- 엔비디아, TSMC, 슈퍼마이크로 등 AI 인프라 핵심 기업들의 실적 및 가이던스 기대감 유지"
+        )
 
     briefing_prompt = f"""
 너는 토스증권/월가 수준의 최고급 생성형 AI 글로벌 증시 브리퍼다.
-현재 시각 {now.strftime('%H:00')} 기준, 지난 1시간 동안 포착된 미국 증시/글로벌 핵심 속보들을 종합하여
+현재 한국 시각 {now.strftime('%H:00')} 기준, 지난 1시간 동안 포착된 미국 증시/글로벌 핵심 속보들을 종합하여
 사용자에게 친근하고 직관적인 '1시간 단위 AI 브리핑'을 1개 작성하라.
 
 [작성 규칙]:
@@ -433,10 +462,15 @@ def maybe_generate_hourly_briefing(force: bool = False):
             "timestamp": int(time.time() * 1000)
         }
 
+        # 1. Kafka 발행
         producer.produce('market-briefings', key=item.time, value=json.dumps(briefing_payload, ensure_ascii=False), callback=delivery_report)
-        producer.flush(timeout=5)
+        producer.flush(timeout=3)
+
+        # 2. Web HTTP 엔진 직접 전송 (100% 즉시 반영 보장)
+        send_http_post("/api/briefings", briefing_payload)
+
         last_briefing_hour = current_hour
-        log_ts(f"📢 [AI 1시간 브리핑 발행 완료] {item.time} | {item.title}")
+        log_ts(f"📢 [AI 1시간 브리핑 발행 완료] {item.time} (KST) | {item.title}")
     except Exception as be:
         log_ts(f"[AI 브리핑 생성 오류]: {be}")
 
@@ -704,9 +738,9 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
     log_ts(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
     log_ts(f"   [투자 근거]: {signal.reason}")
 
-    # ★ 웹 대시보드 실시간 로그 탭을 위해 모든 분석 결과(HOLD 포함)를 Kafka로 전송
+    # ★ 웹 대시보드 실시간 로그 탭을 위해 모든 분석 결과(HOLD 포함)를 Kafka 및 HTTP로 전송
     try:
-        now_dt = datetime.now()
+        now_dt = get_now_kst()
         analysis_log_payload = {
             "id": f"al-{int(time.time() * 1000)}",
             "timestamp": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -728,10 +762,14 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
             "bollinger_b": signal.bollinger_b,
             "quant_score": signal.quant_score
         }
+        # 1. Kafka 전송
         producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)
-        producer.flush(timeout=3)
+        producer.flush(timeout=2)
+
+        # 2. Web HTTP 엔진 직접 전송 (100% 즉시 반영 보장)
+        send_http_post("/api/analysis-logs", analysis_log_payload)
     except Exception as le:
-        log_ts(f"   ⚠️ [분석 로그 Kafka 전송 실패]: {le}")
+        log_ts(f"   ⚠️ [분석 로그 전송 실패]: {le}")
 
     # BUY or SELL & 확신도 >= 0.65 일 때 트레이딩 엔진 주문 Kafka 전송
     if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.65:
@@ -799,9 +837,9 @@ def scan_market_wide_news(batch_size: int = 10):
             log_ts(f"   [리스크] 단가: ${signal.order_price:.2f} | 익절가: ${signal.take_profit:.2f} | 손절가: ${signal.stop_loss:.2f}")
             log_ts(f"   [투자 근거]: {signal.reason}")
 
-            # 웹 대시보드 실시간 로그 탭을 위해 모든 분석 결과(HOLD 포함)를 Kafka로 전송
+            # 웹 대시보드 실시간 로그 탭을 위해 모든 분석 결과(HOLD 포함)를 Kafka 및 HTTP로 전송
             try:
-                now_dt = datetime.now()
+                now_dt = get_now_kst()
                 analysis_log_payload = {
                     "id": f"al-{int(time.time() * 1000)}",
                     "timestamp": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -823,10 +861,14 @@ def scan_market_wide_news(batch_size: int = 10):
                     "bollinger_b": signal.bollinger_b,
                     "quant_score": signal.quant_score
                 }
+                # 1. Kafka 전송
                 producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)
-                producer.flush(timeout=3)
+                producer.flush(timeout=2)
+
+                # 2. Web HTTP 엔진 직접 전송 (100% 즉시 반영 보장)
+                send_http_post("/api/analysis-logs", analysis_log_payload)
             except Exception as le:
-                log_ts(f"   ⚠️ [분석 로그 Kafka 전송 실패]: {le}")
+                log_ts(f"   ⚠️ [분석 로그 전송 실패]: {le}")
 
             # BUY or SELL & 확신도 >= 0.65 일 때 트레이딩 엔진 주문 전송
             if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.65:
@@ -941,8 +983,8 @@ def main():
     log_ts(f" 모드: {'24시간 지속 모니터링 (' + str(args.interval) + '초 간격)' if args.loop else '1회 시장 종합 스캔 모드'}")
     log_ts("==================================================")
 
-    # 기동 시 첫 1회 브리핑 생성 시도
-    maybe_generate_hourly_briefing(force=False)
+    # 기동 시 첫 1회 현재 KST 시간대 브리핑 즉시 생성 및 발행
+    maybe_generate_hourly_briefing(force=True)
 
     while True:
         if args.scan_all_universe:

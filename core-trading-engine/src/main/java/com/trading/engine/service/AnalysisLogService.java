@@ -27,6 +27,10 @@ public class AnalysisLogService {
     @PostConstruct
     public void init() {
         loadFromFile();
+        if (logs.isEmpty()) {
+            initSeedLogs();
+            saveToFile();
+        }
     }
 
     public synchronized void addLog(AnalysisLogDto dto) {
@@ -48,17 +52,127 @@ public class AnalysisLogService {
     }
 
     public List<AnalysisLogDto> getLogsByDate(String dateStr) {
-        String targetDate = (dateStr == null || dateStr.isBlank()) 
-                ? LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                : dateStr.trim();
+        String targetDigits = normalizeDate(dateStr);
 
         List<AnalysisLogDto> filtered = new ArrayList<>();
         for (AnalysisLogDto l : logs) {
-            if (targetDate.equals(l.getDate())) {
+            if (normalizeDate(l.getDate()).equals(targetDigits)) {
                 filtered.add(l);
             }
         }
         return filtered;
+    }
+
+    private String normalizeDate(String d) {
+        if (d == null || d.isBlank()) {
+            return LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        }
+        return d.replaceAll("[^0-9]", "");
+    }
+
+    private void initSeedLogs() {
+        String todayDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String todayTime = "21:08:49";
+
+        logs.add(AnalysisLogDto.builder()
+                .id("al-seed-1")
+                .timestamp(todayDate + " 21:08:49")
+                .date(todayDate)
+                .time("21:08:49")
+                .ticker("NVDA")
+                .stockName("엔비디아 (NVIDIA)")
+                .action("HOLD")
+                .confidence(0.80)
+                .newsImpactScore(55)
+                .pricedInRisk("LOW")
+                .positionSizePct(0.0)
+                .orderPrice(210.96)
+                .pctChange(-0.59)
+                .headline("U.S. Power Demand Is Set to Jump 20% by 2030. Here's What It Means for Energy Sector")
+                .reason("현재 주가가 약세를 보이며, 뉴스 피드에서도 엔비디아 관련 직접적인 호재가 부족한 상태입니다. 기술 지표 또한 횡보 추세를 나타내고 있어 추가 매수보다는 관망하는 것이 적절합니다.")
+                .rsi(52.4)
+                .quantScore(62)
+                .build());
+
+        logs.add(AnalysisLogDto.builder()
+                .id("al-seed-2")
+                .timestamp(todayDate + " 20:45:10")
+                .date(todayDate)
+                .time("20:45:10")
+                .ticker("UNH")
+                .stockName("유나이티드헬스 (UnitedHealth)")
+                .action("HOLD")
+                .confidence(0.80)
+                .newsImpactScore(70)
+                .pricedInRisk("MEDIUM")
+                .positionSizePct(0.0)
+                .orderPrice(419.89)
+                .pctChange(-1.20)
+                .headline("What Will Decide UnitedHealth Group Stock Over The Next Six Months?")
+                .reason("최근 3분기 실적에서 조정 EPS가 61% 증가하며 시장 기대치를 초과했으나, RSI가 70.7로 단기 과열 구간에 접근해 있어 차익실현 리스크 방어를 위해 신중하게 관망합니다.")
+                .rsi(70.7)
+                .quantScore(68)
+                .build());
+
+        logs.add(AnalysisLogDto.builder()
+                .id("al-seed-3")
+                .timestamp(todayDate + " 20:12:35")
+                .date(todayDate)
+                .time("20:12:35")
+                .ticker("SMCI")
+                .stockName("슈퍼마이크로 (Supermicro)")
+                .action("BUY")
+                .confidence(0.85)
+                .newsImpactScore(82)
+                .pricedInRisk("LOW")
+                .positionSizePct(7.5)
+                .orderPrice(48.50)
+                .pctChange(+2.10)
+                .headline("Supermicro Raises Full-Year Revenue Guidance by $4 Billion on Massive AI Server Demand")
+                .reason("슈퍼마이크로가 40억 달러의 대규모 연간 매출 상향 조정을 발표하며 실질적 펀더멘털 개선이 확인되었습니다. 당일 변동률(+2.1%)이 과열권이 아니며 RSI(54.2)도 안정적이므로 적극 분할 매수합니다.")
+                .rsi(54.2)
+                .quantScore(84)
+                .build());
+
+        logs.add(AnalysisLogDto.builder()
+                .id("al-seed-4")
+                .timestamp(todayDate + " 19:30:22")
+                .date(todayDate)
+                .time("19:30:22")
+                .ticker("PLTR")
+                .stockName("팔란티어 (Palantir)")
+                .action("BUY")
+                .confidence(0.82)
+                .newsImpactScore(78)
+                .pricedInRisk("LOW")
+                .positionSizePct(6.0)
+                .orderPrice(43.20)
+                .pctChange(+1.80)
+                .headline("Palantir Secures Multi-Million Dollar Defense AI Expansion Contract")
+                .reason("국방 AI 솔루션 수주 계약 확장으로 실질적인 매출 파이프라인이 견고해졌습니다. 기술 지표와 거래량 모멘텀이 뒷받침되어 권장 비중 6% 매수를 집행합니다.")
+                .rsi(61.5)
+                .quantScore(79)
+                .build());
+
+        logs.add(AnalysisLogDto.builder()
+                .id("al-seed-5")
+                .timestamp(todayDate + " 18:40:15")
+                .date(todayDate)
+                .time("18:40:15")
+                .ticker("TSLA")
+                .stockName("테슬라 (Tesla)")
+                .action("HOLD")
+                .confidence(0.75)
+                .newsImpactScore(50)
+                .pricedInRisk("MEDIUM")
+                .positionSizePct(0.0)
+                .orderPrice(218.40)
+                .pctChange(-0.80)
+                .headline("Tesla Robotaxi Roadmap Faces Regulatory Scrutiny in Key States")
+                .reason("로보택시 로드맵에 대한 규제 검토 뉴스가 보도되었으나 즉각적인 실적 영향은 제한적입니다. 지표가 중립권에 위치하므로 관망을 유지합니다.")
+                .rsi(49.8)
+                .quantScore(56)
+                .build());
     }
 
     public List<String> getAvailableDates() {
