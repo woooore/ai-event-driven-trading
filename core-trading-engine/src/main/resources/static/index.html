@@ -1163,6 +1163,241 @@
       border-radius: 8px;
       border-left: 3px solid var(--accent-indigo);
     }
+
+    /* EARNINGS TAB STYLES */
+    .earnings-banner {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(99, 102, 241, 0.12));
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .earnings-banner-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .earnings-banner-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .earnings-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .earnings-kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 18px 20px;
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+    }
+
+    .earnings-kpi-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .earnings-kpi-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .earnings-kpi-val {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .earnings-filter-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .earnings-chip-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .earnings-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .earnings-chip:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+
+    .earnings-chip.active {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(234, 88, 12, 0.3));
+      border-color: #f59e0b;
+      color: #fef3c7;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+    }
+
+    .earnings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 20px;
+    }
+
+    .earnings-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 22px;
+      backdrop-filter: blur(12px);
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .earnings-card:hover {
+      border-color: var(--border-highlight);
+      background: var(--bg-card-hover);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .earnings-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .earnings-company-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .earnings-type-badge {
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .type-surprise {
+      background: rgba(16, 185, 129, 0.18);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .type-guidance {
+      background: rgba(6, 182, 212, 0.18);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      color: #67e8f9;
+    }
+
+    .type-shock {
+      background: rgba(239, 68, 68, 0.18);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    .type-regular {
+      background: rgba(168, 85, 247, 0.18);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #c084fc;
+    }
+
+    .earnings-headline {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f8fafc;
+      line-height: 1.45;
+    }
+
+    .earnings-fact-box {
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .earnings-fact-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .fact-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .fact-label {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 50px;
+    }
+
+    .fact-value {
+      color: #e2e8f0;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .earnings-ai-comment {
+      background: rgba(99, 102, 241, 0.08);
+      border-left: 3px solid var(--accent-indigo);
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -1281,6 +1516,11 @@
         <span style="font-size: 16px;">📖</span>
         <span>일별 매매 일지 & 일기장 (Daily Trading Diary)</span>
         <span class="tab-badge" id="diary-day-count-badge">0일</span>
+      </button>
+      <button class="nav-tab-btn" id="btn-tab-earnings" onclick="switchMainTab('earnings')">
+        <span style="font-size: 16px;">🏆</span>
+        <span>실적 발표 & 어닝스 (Top 100)</span>
+        <span class="tab-badge" id="earnings-count-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">EARNINGS</span>
       </button>
     </div>
 
@@ -1494,6 +1734,85 @@
           <p style="font-size: 15px; font-weight: 700; color: #f3f4f6;">해당 일자에 수신된 AI 감지 로그가 없습니다.</p>
           <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">AI Signal Worker가 나스닥 우량 종목을 스캔하면 실시간으로 분석 내역이 기록됩니다.</p>
         </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: 🏆 미국 시총 상위 100대 기업 실적 발표 & 어닝스 트래커 -->
+    <div id="tab-pane-earnings" style="display: none;">
+      <!-- TOP BANNER -->
+      <div class="earnings-banner">
+        <div>
+          <div class="earnings-banner-title">
+            <span>🏆 미국 시총 상위 100대 기업 실적 발표 & 어닝스 트래커</span>
+            <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; font-size: 11px;">매주 월요일 09:00 KST 자동 갱신 유니버스</span>
+          </div>
+          <div class="earnings-banner-sub">
+            미국 시총 상위 100대 우량주 유니버스의 분기 EPS·매출·가이던스 서프라이즈를 AI가 24시간 실시간 감지하여 공시 팩트 위주로 집계합니다.
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <span class="badge badge-live">TOP 100 UNIVERSE LOCKED (7 DAYS)</span>
+        </div>
+      </div>
+
+      <!-- KPI METRIC CARDS -->
+      <div class="earnings-kpi-grid">
+        <div class="earnings-kpi-card">
+          <div class="earnings-kpi-label">
+            <span>총 실적 공시 이벤트</span>
+            <span>📑</span>
+          </div>
+          <div class="earnings-kpi-val" id="earnings-kpi-total" style="color: #67e8f9;">0건</div>
+        </div>
+
+        <div class="earnings-kpi-card">
+          <div class="earnings-kpi-label">
+            <span>어닝 서프라이즈 (BEAT)</span>
+            <span>🚀</span>
+          </div>
+          <div class="earnings-kpi-val" id="earnings-kpi-surprise" style="color: #34d399;">0건</div>
+        </div>
+
+        <div class="earnings-kpi-card">
+          <div class="earnings-kpi-label">
+            <span>가이던스 상향 (GUIDANCE)</span>
+            <span>💎</span>
+          </div>
+          <div class="earnings-kpi-val" id="earnings-kpi-guidance" style="color: #60a5fa;">0건</div>
+        </div>
+
+        <div class="earnings-kpi-card">
+          <div class="earnings-kpi-label">
+            <span>어닝 쇼크 / 하향 (MISS)</span>
+            <span>⚠️</span>
+          </div>
+          <div class="earnings-kpi-val" id="earnings-kpi-shock" style="color: #f87171;">0건</div>
+        </div>
+      </div>
+
+      <!-- FILTER & CONTROL BAR -->
+      <div class="earnings-filter-bar">
+        <div class="earnings-chip-group">
+          <button class="earnings-chip active" id="chip-filter-all" onclick="filterEarnings('ALL')">전체보기</button>
+          <button class="earnings-chip" id="chip-filter-surprise" onclick="filterEarnings('SURPRISE')">🚀 어닝 서프라이즈</button>
+          <button class="earnings-chip" id="chip-filter-guidance" onclick="filterEarnings('GUIDANCE')">💎 가이던스 상향</button>
+          <button class="earnings-chip" id="chip-filter-shock" onclick="filterEarnings('SHOCK')">⚠️ 어닝 쇼크</button>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn-chart-search" style="padding: 7px 16px; font-size: 12px; background: var(--accent-indigo); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;" onclick="fetchEarnings()">🔄 새로고침</button>
+        </div>
+      </div>
+
+      <!-- EARNINGS CARDS GRID -->
+      <div id="earnings-grid" class="earnings-grid">
+        <!-- DYNAMIC CONTENT -->
+      </div>
+
+      <div id="earnings-empty-state" class="empty-state section-card" style="display: none; padding: 60px 24px;">
+        <div class="empty-state-icon">📊</div>
+        <p style="font-size: 15px; font-weight: 700; color: #f3f4f6;">등록된 실적 발표 이벤트가 없습니다.</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Top 100 기업의 분기 실적 발표 또는 가이던스 공시가 감지되면 자동으로 피드가 갱신됩니다.</p>
       </div>
     </div>
   </div>
@@ -1772,7 +2091,7 @@
       }).join('');
     }
 
-    // 탭 전환 함수 (4개 탭: realtime, briefing, logs, diary)
+    // 탭 전환 함수 (5개 탭: realtime, briefing, logs, diary, earnings)
     let currentMainTab = 'realtime';
     function switchMainTab(tab) {
       currentMainTab = tab;
@@ -1780,21 +2099,25 @@
       const btnBriefing = document.getElementById('btn-tab-briefing');
       const btnLogs = document.getElementById('btn-tab-logs');
       const btnDiary = document.getElementById('btn-tab-diary');
+      const btnEarnings = document.getElementById('btn-tab-earnings');
 
       const paneRealtime = document.getElementById('tab-pane-realtime');
       const paneBriefing = document.getElementById('tab-pane-briefing');
       const paneLogs = document.getElementById('tab-pane-logs');
       const paneDiary = document.getElementById('tab-pane-diary');
+      const paneEarnings = document.getElementById('tab-pane-earnings');
 
       if (btnRealtime) btnRealtime.classList.toggle('active', tab === 'realtime');
       if (btnBriefing) btnBriefing.classList.toggle('active', tab === 'briefing');
       if (btnLogs) btnLogs.classList.toggle('active', tab === 'logs');
       if (btnDiary) btnDiary.classList.toggle('active', tab === 'diary');
+      if (btnEarnings) btnEarnings.classList.toggle('active', tab === 'earnings');
 
       if (paneRealtime) paneRealtime.style.display = (tab === 'realtime') ? 'block' : 'none';
       if (paneBriefing) paneBriefing.style.display = (tab === 'briefing') ? 'block' : 'none';
       if (paneLogs) paneLogs.style.display = (tab === 'logs') ? 'block' : 'none';
       if (paneDiary) paneDiary.style.display = (tab === 'diary') ? 'block' : 'none';
+      if (paneEarnings) paneEarnings.style.display = (tab === 'earnings') ? 'block' : 'none';
 
       if (tab === 'briefing') {
         fetchBriefings();
@@ -1802,6 +2125,8 @@
         loadAnalysisLogs();
       } else if (tab === 'diary' && window.lastDashboardData) {
         renderDiaryTab(window.lastDashboardData);
+      } else if (tab === 'earnings') {
+        fetchEarnings(currentEarningsFilter);
       }
     }
 
@@ -2288,10 +2613,129 @@
       }).join('');
     }
 
-    // 초기 로딩: 대시보드, AI 브리핑, 실시간 분석 로그 즉시 로드
+    // ==========================================
+    // 🏆 미국 시총 상위 100대 기업 실적 발표 & 어닝스 엔진
+    // ==========================================
+    let currentEarningsFilter = 'ALL';
+
+    function filterEarnings(filter) {
+      currentEarningsFilter = filter;
+      const chips = {
+        'ALL': document.getElementById('chip-filter-all'),
+        'SURPRISE': document.getElementById('chip-filter-surprise'),
+        'GUIDANCE': document.getElementById('chip-filter-guidance'),
+        'SHOCK': document.getElementById('chip-filter-shock')
+      };
+      Object.keys(chips).forEach(k => {
+        if (chips[k]) chips[k].classList.toggle('active', k === filter);
+      });
+      fetchEarnings(filter);
+    }
+
+    async function fetchEarnings(filter) {
+      if (!filter) filter = currentEarningsFilter;
+      try {
+        // 1. 요약 통계 조회
+        const summaryRes = await fetch('/api/earnings/summary');
+        if (summaryRes.ok) {
+          const s = await summaryRes.json();
+          document.getElementById('earnings-kpi-total').textContent = `${s.total || 0}건`;
+          document.getElementById('earnings-kpi-surprise').textContent = `${s.surprise || 0}건`;
+          document.getElementById('earnings-kpi-guidance').textContent = `${s.guidance || 0}건`;
+          document.getElementById('earnings-kpi-shock').textContent = `${s.shock || 0}건`;
+          const badge = document.getElementById('earnings-count-badge');
+          if (badge) badge.textContent = `${s.total || 0}건`;
+        }
+
+        // 2. 실적 목록 조회
+        const res = await fetch(`/api/earnings?filter=${encodeURIComponent(filter)}`);
+        if (!res.ok) return;
+        const items = await res.json();
+        renderEarnings(items);
+      } catch (err) {
+        console.error('실적 데이터 패치 실패:', err);
+      }
+    }
+
+    function renderEarnings(items) {
+      const grid = document.getElementById('earnings-grid');
+      const emptyEl = document.getElementById('earnings-empty-state');
+      if (!grid) return;
+
+      items = items || [];
+      if (items.length === 0) {
+        grid.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      grid.innerHTML = items.map(e => {
+        let typeBadgeClass = 'type-regular';
+        let typeIcon = '📑';
+        if (e.eventType === '어닝 서프라이즈') {
+          typeBadgeClass = 'type-surprise';
+          typeIcon = '🚀';
+        } else if (e.eventType === '가이던스 상향') {
+          typeBadgeClass = 'type-guidance';
+          typeIcon = '💎';
+        } else if (e.eventType === '어닝 쇼크') {
+          typeBadgeClass = 'type-shock';
+          typeIcon = '⚠️';
+        }
+
+        const impact = e.stockImpactPct != null ? e.stockImpactPct : 0.0;
+        const impactSign = impact >= 0 ? '+' : '';
+        const impactClass = impact >= 0 ? 'profit-positive' : 'profit-negative';
+
+        return `
+          <div class="earnings-card">
+            <div class="earnings-card-header">
+              <div class="earnings-company-info">
+                <span class="ticker-badge">${e.ticker}</span>
+                <span style="font-size: 16px; font-weight: 700; color: #ffffff;">${e.stockName || e.ticker}</span>
+                <span class="badge" style="background: rgba(255, 255, 255, 0.06); font-family: var(--font-mono); font-size: 11px;">${e.quarter || '2026 Q3'}</span>
+                <span class="earnings-type-badge ${typeBadgeClass}">${typeIcon} ${e.eventType || '실적 공시'}</span>
+              </div>
+              <div style="text-align: right;">
+                <div class="${impactClass}" style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">
+                  당일 변동 ${impactSign}${impact.toFixed(2)}%
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+                  ${e.date || ''} ${e.time || ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="earnings-headline">📰 ${e.headline || '기업 공시 및 실적 보고서'}</div>
+
+            <div class="earnings-fact-box">
+              <div class="earnings-fact-row">
+                <span class="fact-icon">💰</span>
+                <span class="fact-label">EPS:</span>
+                <span class="fact-value">${e.epsSummary || '-'}</span>
+              </div>
+              <div class="earnings-fact-row">
+                <span class="fact-icon">📊</span>
+                <span class="fact-label">매출/가이던스:</span>
+                <span class="fact-value">${e.revenueSummary || '-'}</span>
+              </div>
+            </div>
+
+            <div class="earnings-ai-comment">
+              <span style="font-weight: 700; color: #a5b4fc;">🤖 AI 실적 분석 총평: </span>
+              ${e.aiSummary || '실적 및 가이던스 주요 수치가 업데이트되었습니다.'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 초기 로딩: 대시보드, AI 브리핑, 실시간 분석 로그, 실적 이벤트 즉시 로드
     fetchDashboard();
     fetchBriefings();
     loadAnalysisLogs();
+    fetchEarnings('ALL');
 
     // 3초마다 실시간 대시보드 및 현재 활성 탭 자동 동기화
     setInterval(() => {
@@ -2300,6 +2744,8 @@
         loadAnalysisLogs(currentLogDate);
       } else if (currentMainTab === 'briefing') {
         fetchBriefings(currentBriefingDate);
+      } else if (currentMainTab === 'earnings') {
+        fetchEarnings(currentEarningsFilter);
       }
     }, 3000);
   </script>

@@ -28,6 +28,7 @@ public class StockSignalConsumer {
     private final RedissonClient redissonClient;
     private final com.trading.engine.service.AnalysisLogService analysisLogService;
     private final com.trading.engine.service.MarketBriefingService marketBriefingService;
+    private final com.trading.engine.service.EarningsService earningsService;
 
     // Redisson 연결 불가 시 안전한 인메모리 쿨다운 폴백
     private final ConcurrentHashMap<String, Instant> inMemoryCooldown = new ConcurrentHashMap<>();
@@ -39,12 +40,14 @@ public class StockSignalConsumer {
             PortfolioManager portfolioManager,
             com.trading.engine.service.AnalysisLogService analysisLogService,
             com.trading.engine.service.MarketBriefingService marketBriefingService,
+            com.trading.engine.service.EarningsService earningsService,
             @Autowired(required = false) RedissonClient redissonClient) {
         this.objectMapper = objectMapper;
         this.kisOrderService = kisOrderService;
         this.portfolioManager = portfolioManager;
         this.analysisLogService = analysisLogService;
         this.marketBriefingService = marketBriefingService;
+        this.earningsService = earningsService;
         this.redissonClient = redissonClient;
     }
 
@@ -71,6 +74,19 @@ public class StockSignalConsumer {
             marketBriefingService.addBriefing(dto);
         } catch (Exception e) {
             log.error("시장 브리핑 Kafka 수신 오류: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 미국 시총 상위 100대 기업 실적 발표 및 어닝스 이벤트 수신
+     */
+    @KafkaListener(topics = "earnings-events", groupId = "trading-engine-earnings-group")
+    public void consumeEarningsEvent(String message) {
+        try {
+            com.trading.engine.dto.EarningsEventDto dto = objectMapper.readValue(message, com.trading.engine.dto.EarningsEventDto.class);
+            earningsService.addEarningsEvent(dto);
+        } catch (Exception e) {
+            log.error("실적 이벤트 Kafka 수신 오류: {}", e.getMessage());
         }
     }
 

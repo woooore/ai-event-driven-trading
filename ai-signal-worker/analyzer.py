@@ -59,86 +59,9 @@ def send_http_post(endpoint: str, data: dict):
         except Exception:
             continue
 
-# 2. 나스닥 100 및 미국 대표 우량/성장주 유니버스 풀 (NASDAQ & Tech Top 100)
-WATCHLIST_UNIVERSE: Dict[str, Dict[str, str]] = {
-    # ── [빅테크 & 초거대 플랫폼] ──
-    "NVDA": {"name": "엔비디아 (NVIDIA)", "keywords": ["nvidia", "nvda", "jensen huang", "gpu", "blackwell"], "exchange": "NASD"},
-    "AAPL": {"name": "애플 (Apple)", "keywords": ["apple", "aapl", "iphone", "tim cook", "apple intelligence"], "exchange": "NASD"},
-    "MSFT": {"name": "마이크로소프트 (Microsoft)", "keywords": ["microsoft", "msft", "satya nadella", "azure", "copilot"], "exchange": "NASD"},
-    "AMZN": {"name": "아마존 (Amazon)", "keywords": ["amazon", "amzn", "aws", "andy jassy", "cloud"], "exchange": "NASD"},
-    "GOOGL": {"name": "알파벳 구글 (Alphabet)", "keywords": ["google", "googl", "goog", "alphabet", "gemini", "sundar pichai"], "exchange": "NASD"},
-    "META": {"name": "메타 (Meta Platforms)", "keywords": ["meta", "facebook", "zuckerberg", "instagram", "llama"], "exchange": "NASD"},
-    "TSLA": {"name": "테슬라 (Tesla)", "keywords": ["tesla", "tsla", "elon musk", "cybertruck", "robotaxi", "fsd"], "exchange": "NASD"},
-    "NFLX": {"name": "넷플릭스 (Netflix)", "keywords": ["netflix", "nflx", "streaming", "squid game"], "exchange": "NASD"},
-
-    # ── [AI 반도체 & 장비 & 하드웨어] ──
-    "AVGO": {"name": "브로드컴 (Broadcom)", "keywords": ["broadcom", "avgo", "hock tan"], "exchange": "NASD"},
-    "AMD": {"name": "AMD", "keywords": ["amd", "lisa su", "mi300", "ryzen", "radeon"], "exchange": "NASD"},
-    "QCOM": {"name": "퀄컴 (Qualcomm)", "keywords": ["qualcomm", "qcom", "snapdragon"], "exchange": "NASD"},
-    "TSM": {"name": "TSMC", "keywords": ["tsmc", "tsm", "foundry"], "exchange": "NYSE"},
-    "ASML": {"name": "ASML", "keywords": ["asml", "euv", "lithography"], "exchange": "NASD"},
-    "ARM": {"name": "Arm 홀딩스", "keywords": ["arm", "arm holdings", "softbank"], "exchange": "NASD"},
-    "MU": {"name": "마이크론 (Micron)", "keywords": ["micron", "mu", "hbm", "dram"], "exchange": "NASD"},
-    "INTC": {"name": "인텔 (Intel)", "keywords": ["intel", "intc", "pat gelsinger"], "exchange": "NASD"},
-    "AMAT": {"name": "어플라이드 머티어리얼즈", "keywords": ["applied materials", "amat"], "exchange": "NASD"},
-    "LRCX": {"name": "램리서치 (Lam Research)", "keywords": ["lam research", "lrcx"], "exchange": "NASD"},
-    "KLAC": {"name": "KLA", "keywords": ["kla", "klac"], "exchange": "NASD"},
-    "MRVL": {"name": "마벨 (Marvell)", "keywords": ["marvell", "mrvl"], "exchange": "NASD"},
-    "TXN": {"name": "텍사스 인스트루먼트", "keywords": ["texas instruments", "txn"], "exchange": "NASD"},
-    "SMCI": {"name": "슈퍼마이크로 (Supermicro)", "keywords": ["supermicro", "smci"], "exchange": "NASD"},
-
-    # ── [엔터프라이즈 AI / SaaS / 클라우드 / 보안] ──
-    "PLTR": {"name": "팔란티어 (Palantir)", "keywords": ["palantir", "pltr", "alex karp", "aip"], "exchange": "NYSE"},
-    "ORCL": {"name": "오라클 (Oracle)", "keywords": ["oracle", "orcl", "larry ellison"], "exchange": "NYSE"},
-    "CRM": {"name": "세일즈포스 (Salesforce)", "keywords": ["salesforce", "crm", "agentforce"], "exchange": "NYSE"},
-    "ADBE": {"name": "어도비 (Adobe)", "keywords": ["adobe", "adbe", "firefly"], "exchange": "NASD"},
-    "NOW": {"name": "서비스나우 (ServiceNow)", "keywords": ["servicenow", "now"], "exchange": "NYSE"},
-    "INTU": {"name": "인튜이트 (Intuit)", "keywords": ["intuit", "intu", "turbotax"], "exchange": "NASD"},
-    "IBM": {"name": "IBM", "keywords": ["ibm", "watson"], "exchange": "NYSE"},
-    "PANW": {"name": "팔로알토 네트웍스", "keywords": ["palo alto networks", "panw"], "exchange": "NASD"},
-    "CRWD": {"name": "크라우드스트라이크", "keywords": ["crowdstrike", "crwd"], "exchange": "NASD"},
-    "SNOW": {"name": "스노우플레이크", "keywords": ["snowflake", "snow"], "exchange": "NYSE"},
-    "DDOG": {"name": "데이터독 (Datadog)", "keywords": ["datadog", "ddog"], "exchange": "NASD"},
-    "MDB": {"name": "몽고DB (MongoDB)", "keywords": ["mongodb", "mdb"], "exchange": "NASD"},
-    "ZS": {"name": "지스케일러 (Zscaler)", "keywords": ["zscaler", "zs"], "exchange": "NASD"},
-    "CSCO": {"name": "시스코 (Cisco)", "keywords": ["cisco", "csco"], "exchange": "NASD"},
-
-    # ── [핀테크 / 전자상거래 / 플랫폼 / 모빌리티] ──
-    "SHOP": {"name": "쇼피파이 (Shopify)", "keywords": ["shopify", "shop"], "exchange": "NYSE"},
-    "PYPL": {"name": "페이팔 (PayPal)", "keywords": ["paypal", "pypl"], "exchange": "NASD"},
-    "COIN": {"name": "코인베이스 (Coinbase)", "keywords": ["coinbase", "coin", "bitcoin", "crypto"], "exchange": "NASD"},
-    "UBER": {"name": "우버 (Uber)", "keywords": ["uber"], "exchange": "NYSE"},
-    "ABNB": {"name": "에어비앤비 (Airbnb)", "keywords": ["airbnb", "abnb"], "exchange": "NASD"},
-    "DASH": {"name": "도어대시 (DoorDash)", "keywords": ["doordash", "dash"], "exchange": "NASD"},
-    "BKNG": {"name": "부킹 홀딩스", "keywords": ["booking", "bkng"], "exchange": "NASD"},
-    "MELI": {"name": "메르카도리브레", "keywords": ["mercadolibre", "meli"], "exchange": "NASD"},
-    "PDD": {"name": "핀둬둬 (PDD/Temu)", "keywords": ["pdd", "temu", "pinduoduo"], "exchange": "NASD"},
-
-    # ── [바이오 / 헬스케어 혁신] ──
-    "LLY": {"name": "일라이 릴리 (Eli Lilly)", "keywords": ["eli lilly", "lly", "mounjaro", "zepbound"], "exchange": "NYSE"},
-    "ISRG": {"name": "인튜이티브 서지컬", "keywords": ["intuitive surgical", "isrg", "da vinci"], "exchange": "NASD"},
-    "VRTX": {"name": "버텍스 (Vertex)", "keywords": ["vertex", "vrtx"], "exchange": "NASD"},
-    "REGN": {"name": "리제네론 (Regeneron)", "keywords": ["regeneron", "regn"], "exchange": "NASD"},
-    "MRNA": {"name": "모더나 (Moderna)", "keywords": ["moderna", "mrna"], "exchange": "NASD"},
-    "GILD": {"name": "길리어드 (Gilead)", "keywords": ["gilead", "gild"], "exchange": "NASD"},
-    "AMGN": {"name": "암젠 (Amgen)", "keywords": ["amgen", "amgn"], "exchange": "NASD"},
-    "UNH": {"name": "유나이티드헬스", "keywords": ["unitedhealth", "unh"], "exchange": "NYSE"},
-    "TMO": {"name": "써모피셔", "keywords": ["thermo fisher", "tmo"], "exchange": "NYSE"},
-
-    # ── [대표 소비재 / 산업 / 에너지] ──
-    "COST": {"name": "코스트코 (Costco)", "keywords": ["costco", "cost"], "exchange": "NASD"},
-    "WMT": {"name": "월마트 (Walmart)", "keywords": ["walmart", "wmt"], "exchange": "NYSE"},
-    "SBUX": {"name": "스타벅스 (Starbucks)", "keywords": ["starbucks", "sbux"], "exchange": "NASD"},
-    "LULU": {"name": "룰루레몬 (Lululemon)", "keywords": ["lululemon", "lulu"], "exchange": "NASD"},
-    "DIS": {"name": "디즈니 (Disney)", "keywords": ["disney", "dis"], "exchange": "NYSE"},
-    "JPM": {"name": "JP모건 (JPMorgan)", "keywords": ["jpmorgan", "jpm"], "exchange": "NYSE"},
-    "V": {"name": "비자 (Visa)", "keywords": ["visa"], "exchange": "NYSE"},
-    "MA": {"name": "마스터카드 (Mastercard)", "keywords": ["mastercard"], "exchange": "NYSE"},
-    "CAT": {"name": "캐터필러 (Caterpillar)", "keywords": ["caterpillar", "cat"], "exchange": "NYSE"},
-    "GE": {"name": "GE 에어로스페이스", "keywords": ["ge aerospace", "ge"], "exchange": "NYSE"}
-}
-
-# 기존 코드와의 하위 호환성 별칭
+# 2. 미국 시총 상위 100대 기업 유니버스 (매주 월요일 09:00 KST 자동 갱신 및 1주일 고정 유지)
+from universe_manager import load_or_update_top100_universe, get_current_monday_cycle
+WATCHLIST_UNIVERSE: Dict[str, Dict[str, str]] = load_or_update_top100_universe()
 TOP_50_US_STOCKS = WATCHLIST_UNIVERSE
 
 # 3. RAG 기반 매매 일지 (Trading Journal) 시스템
@@ -474,6 +397,77 @@ def maybe_generate_hourly_briefing(force: bool = False):
     except Exception as be:
         log_ts(f"[AI 브리핑 생성 오류]: {be}")
 
+# 5-3. 미국 시총 Top 100 실적 발표 / 어닝스 / 가이던스 Pydantic 스키마
+class EarningsExtraction(BaseModel):
+    is_earnings_or_guidance: bool = Field(description="이 뉴스가 실적 발표(Earnings), 분기 EPS/매출 결과, 또는 가이던스 상향/하향과 직접 관련된 핵심 팩트인지 여부")
+    quarter: str = Field(default="2026 Q3", description="해당 실적의 분기 (예: '2026 Q3', '2026 Q4', '연간 가이던스')")
+    event_type: str = Field(default="실적 발표", description="'어닝 서프라이즈', '가이던스 상향', '어닝 쇼크', '실적 발표' 중 하나")
+    eps_summary: str = Field(default="", description="주당순이익(EPS) 성과 1줄 요약 (예: '조정 EPS $3.42 (+61% YoY, 시장 컨센서스 상회)')")
+    revenue_summary: str = Field(default="", description="매출 및 가이던스 1줄 요약 (예: '연간 매출 가이던스 40억 달러 상향')")
+    ai_summary: str = Field(default="", description="실적이 주가와 펀더멘털에 미치는 영향 1~2문장 요약")
+    sentiment: str = Field(default="호재", description="'호재', '악재', '중립' 중 하나")
+
+EARNINGS_KEYWORDS = [
+    "earnings", "eps", "revenue", "guidance", "profit", "quarterly results",
+    "quarterly report", "sales", "net income", "beat", "missed", "실적", "분기",
+    "가이던스", "어닝", "흑자", "적자", "매출 상향", "상향 조정", "어닝 서프라이즈", "어닝 쇼크"
+]
+
+def maybe_process_earnings_event(ticker: str, stock_name: str, headline: str, news_text: str, pct_change: float):
+    """미국 시총 Top 100 기업의 뉴스 중 실적/가이던스 이벤트를 감지하여 Kafka 및 웹 API로 전송"""
+    headline_lower = headline.lower()
+    if not any(k in headline_lower for k in EARNINGS_KEYWORDS):
+        return
+
+    prompt = f"""
+너는 월스트리트 최고 수준의 기업 공시 및 실적 분석가다.
+다음은 미국 시총 상위 100대 대형주 {stock_name} ({ticker})의 최신 뉴스다.
+이 뉴스가 실적 발표(Earnings), 분기 EPS/매출 결과, 또는 가이던스 상향/하향과 관련된 발표인지 분석하여
+Pydantic 스키마에 맞춰 JSON으로 추출하라. 단순 루머나 시황 의견이고 실적/가이던스 팩트 발표가 아니라면 is_earnings_or_guidance=False 로 반환하라.
+
+헤드라인: {headline}
+뉴스 내용: {news_text[:600]}
+당일 주가 변동률: {pct_change:+}%
+"""
+    try:
+        resp = client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format=EarningsExtraction
+        )
+        res: EarningsExtraction = resp.choices[0].message.parsed
+        if not res.is_earnings_or_guidance:
+            return
+
+        now_dt = get_now_kst()
+        payload = {
+            "id": f"earn-{ticker.lower()}-{int(time.time())}",
+            "ticker": ticker,
+            "stockName": stock_name,
+            "date": now_dt.strftime("%Y-%m-%d"),
+            "time": now_dt.strftime("%H:%M:%S"),
+            "quarter": res.quarter,
+            "eventType": res.event_type,
+            "headline": headline,
+            "epsSummary": res.eps_summary or "EPS 컨센서스 집계 완료",
+            "revenueSummary": res.revenue_summary or "매출 가이던스 공시 완료",
+            "aiSummary": res.ai_summary or f"{stock_name} 실적 및 가이던스 공시 반영",
+            "sentiment": res.sentiment,
+            "stockImpactPct": pct_change,
+            "timestamp": int(time.time() * 1000)
+        }
+
+        # 1. Kafka 전송
+        producer.produce('earnings-events', key=ticker, value=json.dumps(payload, ensure_ascii=False), callback=delivery_report)
+        producer.flush(timeout=2)
+
+        # 2. Web HTTP 엔진 직접 전송 (100% 즉시 반영)
+        send_http_post("/api/earnings", payload)
+
+        log_ts(f"📊 [Top 100 실적 이벤트 등록] {ticker} ({stock_name}) | {res.event_type} | {res.quarter} | {headline[:60]}")
+    except Exception as e:
+        log_ts(f"[실적 이벤트 추출 오류] {ticker}: {e}")
+
 # 7. 종목별 시세, 기술적 지표 및 뉴스 수집기
 def get_market_and_news(ticker: str, custom_news_list: Optional[List[dict]] = None):
     try:
@@ -724,8 +718,12 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
     headline = market_data['news'][0]['title']
     record_headline_for_briefing(headline)
 
+    # 미국 시총 Top 100 실적/가이던스 발표 이벤트 감지 및 처리
+    stock_nm = WATCHLIST_UNIVERSE.get(ticker, {}).get('name', ticker)
+    maybe_process_earnings_event(ticker, stock_nm, headline, news_concat, market_data['pct_change'])
+
     tech_info = f"RSI: {market_data['rsi']:.1f}" if market_data.get('rsi') else "RSI: N/A"
-    log_ts(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({WATCHLIST_UNIVERSE.get(ticker, {}).get('name', ticker)}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
+    log_ts(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({stock_nm}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
     log_ts(f"   헤드라인: {headline[:80]}")
 
     signal = evaluate_market_and_trade(market_data)
@@ -786,7 +784,9 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
 # 10. 실시간 전체 시장 종합 속보 스캐너 (나스닥 & 우량/성장주 유니버스 10개씩 라운드로빈 순환)
 def scan_market_wide_news(batch_size: int = 10):
     """나스닥 및 미국 대표 우량/성장주 유니버스 기업의 실시간 헤드라인을 10개씩 라운드로빈 회전하며 24시간 실시간 감시"""
-    global current_scan_offset
+    global current_scan_offset, WATCHLIST_UNIVERSE
+    # 매주 월요일 09:00 KST 갱신 주기 자동 체크
+    WATCHLIST_UNIVERSE = load_or_update_top100_universe()
     all_tickers = list(WATCHLIST_UNIVERSE.keys())
     total_tickers = len(all_tickers)
 
@@ -823,8 +823,12 @@ def scan_market_wide_news(batch_size: int = 10):
             headline = market_data['news'][0]['title']
             record_headline_for_briefing(headline)
 
+            # 미국 시총 Top 100 실적/가이던스 발표 이벤트 감지 및 처리
+            stock_nm = WATCHLIST_UNIVERSE.get(ticker, {}).get('name', ticker)
+            maybe_process_earnings_event(ticker, stock_nm, headline, news_concat, market_data['pct_change'])
+
             tech_info = f"RSI: {market_data['rsi']:.1f}" if market_data.get('rsi') else "RSI: N/A"
-            log_ts(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({WATCHLIST_UNIVERSE.get(ticker, {}).get('name', ticker)}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
+            log_ts(f"\n>> 🔍 [새로운 속보 감지] {ticker} ({stock_nm}) | 현재가: ${market_data['current_price']} ({market_data['pct_change']:+}%) | {tech_info}")
             log_ts(f"   헤드라인: {headline[:80]}")
 
             signal = evaluate_market_and_trade(market_data)
