@@ -5,6 +5,8 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:local}
   kafka:
     bootstrap-servers: ${KAFKA_SERVERS:kafka:29092}
+    listener:
+      missing-topics-fatal: false
     consumer:
       group-id: trading-engine-group
       auto-offset-reset: latest

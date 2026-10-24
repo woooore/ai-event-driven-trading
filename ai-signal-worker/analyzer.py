@@ -543,6 +543,12 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
     dynamic_tp = quant.get('dynamic_take_profit', round(current_price * 1.03, 2))
     dynamic_sl = quant.get('dynamic_stop_loss', round(current_price * 0.935, 2))
 
+    # 월요일 개장 시 주말 동안 축적된 호재/악재 보너스 점수 가산
+    weekend_bonus = get_weekend_catalyst_bonus(ticker)
+    if weekend_bonus != 0:
+        quant_score = max(0, min(100, quant_score + int(weekend_bonus)))
+        log_ts(f"   🌟 [주말 인텔 가산점 반영] {ticker}: 주말 동안 축적된 호재/악재로 퀀트 점수 {weekend_bonus:+}점 보정 (최종 {quant_score}점)")
+
     news_text = "\n".join([
         f"- [제목]: {n['title']}\n  [요약]: {n['summary']}"
         for n in news_items
@@ -690,6 +696,89 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         log_ts(f"[AI 분석 실패] {ticker}: {e}")
         return None
 
+# 8-2. 미국 증시 거래소 개장 시간 판정 & 주말 모니터링 모드 가드
+WEEKEND_INTEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekend_intel_scores.json")
+
+def load_weekend_intel() -> dict:
+    if not os.path.exists(WEEKEND_INTEL_FILE):
+        return {}
+    try:
+        with open(WEEKEND_INTEL_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def record_weekend_intelligence(ticker: str, stock_name: str, action: str, confidence: float, news_impact: Optional[int], quant_score: Optional[int], reason: str, headline: str):
+    """주말에 발생한 호재/악재를 파일에 누적 저장해 두었다가 월요일 장 개장 시 점수에 가산"""
+    intel = load_weekend_intel()
+    if ticker not in intel:
+        intel[ticker] = {
+            "ticker": ticker,
+            "stock_name": stock_name,
+            "net_catalyst_score": 0,
+            "positive_events": 0,
+            "negative_events": 0,
+            "headlines": [],
+            "last_updated": get_now_kst().strftime("%Y-%m-%d %H:%M:%S")
+        }
+    
+    score_delta = (news_impact or 50) if action == "BUY" else -(news_impact or 50)
+    intel[ticker]["net_catalyst_score"] += score_delta
+    if action == "BUY":
+        intel[ticker]["positive_events"] += 1
+    elif action == "SELL":
+        intel[ticker]["negative_events"] += 1
+    intel[ticker]["headlines"].append(headline[:80])
+    intel[ticker]["last_updated"] = get_now_kst().strftime("%Y-%m-%d %H:%M:%S")
+    
+    try:
+        with open(WEEKEND_INTEL_FILE, "w", encoding="utf-8") as f:
+            json.dump(intel, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        log_ts(f"[주말 인텔 저장 오류] {e}")
+
+def get_weekend_catalyst_bonus(ticker: str) -> float:
+    """월요일 프리마켓/정규장 개장 시 주말 동안 축적된 호재/악재 점수를 퀀트 스코어에 보너스로 가산"""
+    now_kst = get_now_kst()
+    # 월요일(weekday == 0)일 때만 주말 축적 보너스 적용
+    if now_kst.weekday() != 0:
+        return 0.0
+
+    intel = load_weekend_intel()
+    item = intel.get(ticker)
+    if not item:
+        return 0.0
+    net_score = item.get("net_catalyst_score", 0)
+    if net_score >= 100:
+        return 15.0 # 주말 대형 호재 집중
+    elif net_score >= 50:
+        return 8.0  # 주말 우량 호재
+    elif net_score <= -50:
+        return -15.0 # 주말 악재 누적
+    return 0.0
+
+def is_us_market_open_or_premarket() -> tuple:
+    """
+    미국 증시 실제 거래 가능 시간 여부 판정 (KST 기준)
+    - 토요일 오전 09:00 KST ~ 월요일 오후 17:00 KST:
+      미국 증시 전체 휴장이므로 '주말 24H 인텔리전스 모니터링 모드'로 전환 (실주문 미발행, 호재/악재 점수 누적)
+    - 평일(월 17:00 ~ 토 09:00): 정규장 및 프리마켓 주문 발행 가능
+    """
+    now_kst = get_now_kst()
+    weekday = now_kst.weekday() # 0:월, 1:화, ..., 4:금, 5:토, 6:일
+    hour = now_kst.hour
+
+    if weekday == 5: # 토요일
+        if hour >= 9:
+            return False, "주말 시장 휴장 (토요일 주말 24H 인텔리전스 모니터링 모드)"
+    elif weekday == 6: # 일요일
+        return False, "주말 시장 휴장 (일요일 주말 24H 인텔리전스 모니터링 모드)"
+    elif weekday == 0: # 월요일
+        if hour < 17:
+            return False, "월요일 프리마켓 개장 대기 (주말 축적 호재 인텔리전스 반영 준비 중)"
+
+    return True, "정규장/프리마켓 매매 가능 시간"
+
 # 9. 중복 기사 캐시 (해시와 함께 타임스탬프 기록 -> 4시간 경과 시 만료되어 주가/지표 변화 반영 재평가 가능)
 processed_news_cache: Dict[str, float] = {}
 current_scan_offset = 0
@@ -771,13 +860,21 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
 
     # BUY or SELL & 확신도 >= 0.65 일 때 트레이딩 엔진 주문 Kafka 전송
     if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.65:
-        try:
-            payload = signal.model_dump_json()
-            producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
-            producer.flush(timeout=5)
-            log_ts(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%, 확신도 {signal.confidence:.2f}) -> Core Engine 전송 완료!")
-        except Exception as ke:
-            log_ts(f"   ⚠️ [Kafka 전송 오류]: {ke}")
+        market_open, market_msg = is_us_market_open_or_premarket()
+        if not market_open:
+            record_weekend_intelligence(
+                signal.ticker, signal.stock_name, signal.action, signal.confidence,
+                signal.news_impact_score, signal.quant_score, signal.reason, headline
+            )
+            log_ts(f"   ⏸️ [{market_msg}] 실주문 발행 동결 (주말 호재/악재 인텔리전스 DB 누적 저장 완료 -> 월요일 개장 시 우선 반영)")
+        else:
+            try:
+                payload = signal.model_dump_json()
+                producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
+                producer.flush(timeout=5)
+                log_ts(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%, 확신도 {signal.confidence:.2f}) -> Core Engine 전송 완료!")
+            except Exception as ke:
+                log_ts(f"   ⚠️ [Kafka 전송 오류]: {ke}")
     else:
         log_ts(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
@@ -876,13 +973,21 @@ def scan_market_wide_news(batch_size: int = 10):
 
             # BUY or SELL & 확신도 >= 0.65 일 때 트레이딩 엔진 주문 전송
             if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.65:
-                try:
-                    payload = signal.model_dump_json()
-                    producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
-                    producer.flush(timeout=5)
-                    log_ts(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%, 확신도 {signal.confidence:.2f}) -> Core Engine 전송 완료!")
-                except Exception as ke:
-                    log_ts(f"   ⚠️ [Kafka 전송 오류]: {ke}")
+                market_open, market_msg = is_us_market_open_or_premarket()
+                if not market_open:
+                    record_weekend_intelligence(
+                        signal.ticker, signal.stock_name, signal.action, signal.confidence,
+                        signal.news_impact_score, signal.quant_score, signal.reason, headline
+                    )
+                    log_ts(f"   ⏸️ [{market_msg}] 실주문 발행 동결 (주말 호재/악재 인텔리전스 DB 누적 저장 완료 -> 월요일 개장 시 우선 반영)")
+                else:
+                    try:
+                        payload = signal.model_dump_json()
+                        producer.produce('stock-signals', key=signal.ticker, value=payload, callback=delivery_report)
+                        producer.flush(timeout=5)
+                        log_ts(f"   🚀 [시그널 발행 성공] {signal.action} {signal.ticker} (비중 {signal.position_size_pct}%, 확신도 {signal.confidence:.2f}) -> Core Engine 전송 완료!")
+                    except Exception as ke:
+                        log_ts(f"   ⚠️ [Kafka 전송 오류]: {ke}")
             else:
                 log_ts(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
