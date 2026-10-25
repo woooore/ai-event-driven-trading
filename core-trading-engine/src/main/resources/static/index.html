@@ -2573,6 +2573,15 @@
       const emptyEl = document.getElementById('briefing-empty-state');
       if (!feedEl) return;
 
+      // 오늘 날짜인 경우, 현재 한국 표준시(KST)보다 미래 시각인 가상 브리핑 완벽 차단 필터
+      const nowKst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+      const currentKstTimeStr = `${String(nowKst.getHours()).padStart(2, '0')}:${String(nowKst.getMinutes()).padStart(2, '0')}`;
+      const todayKstStr = `${nowKst.getFullYear()}. ${String(nowKst.getMonth() + 1).padStart(2, '0')}. ${String(nowKst.getDate()).padStart(2, '0')}.`;
+
+      if (currentBriefingDate === todayKstStr) {
+        items = (items || []).filter(item => !item.time || item.time <= currentKstTimeStr);
+      }
+
       if (!items || items.length === 0) {
         feedEl.innerHTML = '';
         if (emptyEl) emptyEl.style.display = 'block';

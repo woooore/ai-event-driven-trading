@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -22,12 +24,33 @@ public class MarketBriefingService {
     private final ObjectMapper objectMapper;
     private final List<MarketBriefingDto> briefings = new CopyOnWriteArrayList<>();
     private static final String BRIEFING_FILE = "market_briefings.json";
+    private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     @PostConstruct
     public void init() {
         loadFromFile();
+        purgeFutureBriefings();
         if (briefings.isEmpty()) {
             initSeedBriefings();
+            saveToFile();
+        }
+    }
+
+    /**
+     * 당일(오늘) 날짜의 브리핑 중 현재 KST 시각보다 미래 시각인 가상/샘플 브리핑을 완벽 제거
+     */
+    public synchronized void purgeFutureBriefings() {
+        String todayNormalized = LocalDate.now(KST_ZONE).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String currentHourMinute = LocalTime.now(KST_ZONE).format(DateTimeFormatter.ofPattern("HH:mm"));
+
+        int beforeSize = briefings.size();
+        briefings.removeIf(b -> {
+            String bDateNorm = normalizeDate(b.getDate());
+            return bDateNorm.equals(todayNormalized) && b.getTime() != null && b.getTime().compareTo(currentHourMinute) > 0;
+        });
+
+        if (briefings.size() != beforeSize) {
+            log.info(">> [AI 브리핑] 당일 미래 시각 가상 브리핑 {}건 필터링 제거 완료", beforeSize - briefings.size());
             saveToFile();
         }
     }
@@ -38,15 +61,23 @@ public class MarketBriefingService {
      */
     public List<MarketBriefingDto> getBriefingsByDate(String dateStr) {
         String normalizedTarget = normalizeDate(dateStr);
+        String todayNormalized = LocalDate.now(KST_ZONE).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String currentHourMinute = LocalTime.now(KST_ZONE).format(DateTimeFormatter.ofPattern("HH:mm"));
+
         List<MarketBriefingDto> result = new ArrayList<>();
 
         for (MarketBriefingDto b : briefings) {
-            if (normalizeDate(b.getDate()).equals(normalizedTarget)) {
+            String bDateNorm = normalizeDate(b.getDate());
+            if (bDateNorm.equals(normalizedTarget)) {
+                // 오늘 날짜인 경우, 현재 한국 시각보다 미래 시각인 브리핑은 절대 노출 금지
+                if (bDateNorm.equals(todayNormalized) && b.getTime() != null && b.getTime().compareTo(currentHourMinute) > 0) {
+                    continue;
+                }
                 result.add(b);
             }
         }
 
-        // 시간 역순 정렬 (06:00 -> 05:00 -> 04:00 ...)
+        // 시간 역순 정렬 (최신 시간순)
         result.sort((a, b) -> b.getTime().compareTo(a.getTime()));
         return result;
     }
@@ -137,12 +168,31 @@ public class MarketBriefingService {
      * 한국 표준시(KST) 기준 02:00부터 21:00까지 하루 24시간 전체 1시간 단위 AI 브리핑 데이터 초기화
      */
     private void initSeedBriefings() {
-        String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy. MM. dd."));
+        String yesterdayStr = LocalDate.now(KST_ZONE).minusDays(1).format(DateTimeFormatter.ofPattern("yyyy. MM. dd."));
+        String todayStr = LocalDate.now(KST_ZONE).format(DateTimeFormatter.ofPattern("yyyy. MM. dd."));
+        String currentHourMinute = LocalTime.now(KST_ZONE).format(DateTimeFormatter.ofPattern("HH:mm"));
         long now = System.currentTimeMillis();
 
+        java.util.function.BiConsumer<String, MarketBriefingDto> register = (timeStr, dto) -> {
+            // 어제 날짜로는 24시간 풀 히스토리 항상 등록
+            briefings.add(MarketBriefingDto.builder()
+                    .id("prev-" + timeStr.replace(":", ""))
+                    .date(yesterdayStr).time(timeStr)
+                    .title(dto.getTitle()).category(dto.getCategory())
+                    .bullets(dto.getBullets()).timestamp(dto.getTimestamp()).build());
+
+            // 오늘 날짜로는 현재 시각보다 이전/현재 시각인 경우에만 등록 (미래 시각 노출 원천 차단)
+            if (timeStr.compareTo(currentHourMinute) <= 0) {
+                briefings.add(MarketBriefingDto.builder()
+                        .id("b-" + timeStr.replace(":", ""))
+                        .date(todayStr).time(timeStr)
+                        .title(dto.getTitle()).category(dto.getCategory())
+                        .bullets(dto.getBullets()).timestamp(dto.getTimestamp()).build());
+            }
+        };
+
         // 21:00 KST
-        briefings.add(MarketBriefingDto.builder()
-                .id("b-2100").date(todayStr).time("21:00")
+        register.accept("21:00", MarketBriefingDto.builder()
                 .title("미 선물 보합권 유지 속 빅테크 중심 선별 매수세 유입")
                 .category("호재")
                 .bullets(List.of(
@@ -153,8 +203,7 @@ public class MarketBriefingService {
                 .timestamp(now).build());
 
         // 20:00 KST
-        briefings.add(MarketBriefingDto.builder()
-                .id("b-2000").date(todayStr).time("20:00")
+        register.accept("20:00", MarketBriefingDto.builder()
                 .title("유럽 증시 기술주 반등 마감, 미 국채금리 4.8%대 안정세")
                 .category("호재")
                 .bullets(List.of(
@@ -165,8 +214,7 @@ public class MarketBriefingService {
                 .timestamp(now - 3600000).build());
 
         // 19:00 KST
-        briefings.add(MarketBriefingDto.builder()
-                .id("b-1900").date(todayStr).time("19:00")
+        register.accept("19:00", MarketBriefingDto.builder()
                 .title("빅테크 AI 설비투자 지속 기대에 기술주 프리마켓 강세")
                 .category("호재")
                 .bullets(List.of(
@@ -177,8 +225,7 @@ public class MarketBriefingService {
                 .timestamp(now - 7200000).build());
 
         // 18:00 KST
-        briefings.add(MarketBriefingDto.builder()
-                .id("b-1800").date(todayStr).time("18:00")
+        register.accept("18:00", MarketBriefingDto.builder()
                 .title("아시아 증시 반도체 강세 마감 속 미 선물 상승 전환")
                 .category("호재")
                 .bullets(List.of(
