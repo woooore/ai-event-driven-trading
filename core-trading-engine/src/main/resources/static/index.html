@@ -1842,6 +1842,117 @@
       return clean.length >= 19 ? clean.substring(0, 19) + ' (KST)' : clean + ' (KST)';
     }
 
+    // 🏆 미국 시총 상위 100대 기업 한글 표준 명칭 매핑
+    const TOP100_KR_NAMES = {
+      "MSFT": "마이크로소프트 (Microsoft)",
+      "AAPL": "애플 (Apple)",
+      "NVDA": "엔비디아 (NVIDIA)",
+      "GOOGL": "알파벳 구글 (Alphabet)",
+      "AMZN": "아마존 (Amazon)",
+      "META": "메타 (Meta Platforms)",
+      "BRK.B": "버크셔 해서웨이 (Berkshire)",
+      "LLY": "일라이 릴리 (Eli Lilly)",
+      "AVGO": "브로드컴 (Broadcom)",
+      "TSLA": "테슬라 (Tesla)",
+      "JPM": "JP모건 체이스 (JPMorgan)",
+      "WMT": "월마트 (Walmart)",
+      "V": "비자 (Visa)",
+      "XOM": "엑손 모빌 (ExxonMobil)",
+      "MA": "마스터카드 (Mastercard)",
+      "UNH": "유나이티드헬스 (UnitedHealth)",
+      "ORCL": "오라클 (Oracle)",
+      "COST": "코스트코 (Costco)",
+      "HD": "홈디포 (Home Depot)",
+      "PG": "프록터 앤 갬블 (P&G)",
+      "JNJ": "존슨앤드존슨 (J&J)",
+      "NFLX": "넷플릭스 (Netflix)",
+      "BAC": "뱅크오브아메리카 (BofA)",
+      "CRM": "세일즈포스 (Salesforce)",
+      "ABBV": "애브비 (AbbVie)",
+      "CVX": "셰브론 (Chevron)",
+      "KO": "코카콜라 (Coca-Cola)",
+      "MRK": "머크 (Merck)",
+      "AMD": "AMD (초우량 반도체)",
+      "PEP": "펩시코 (PepsiCo)",
+      "LIN": "린데 (Linde)",
+      "ADBE": "어도비 (Adobe)",
+      "TMO": "써모피셔 (Thermo Fisher)",
+      "WFC": "웰스파고 (Wells Fargo)",
+      "CSCO": "시스코 (Cisco)",
+      "ACN": "액센츄어 (Accenture)",
+      "MCD": "맥도날드 (McDonald's)",
+      "IBM": "IBM (글로벌 IT)",
+      "GE": "GE 에어로스페이스 (GE)",
+      "PM": "필립모리스 (Philip Morris)",
+      "QCOM": "퀄컴 (Qualcomm)",
+      "TXN": "텍사스 인스트루먼트 (TI)",
+      "ABT": "애보트 (Abbott)",
+      "CAT": "캐터필러 (Caterpillar)",
+      "DHR": "다나허 (Danaher)",
+      "VZ": "버라이즌 (Verizon)",
+      "AMAT": "어플라이드 머티어리얼즈 (AMAT)",
+      "NOW": "서비스나우 (ServiceNow)",
+      "ISRG": "인튜이티브 서지컬 (다빈치 로봇수술)",
+      "DIS": "월트 디즈니 (Disney)",
+      "PFE": "화이자 (Pfizer)",
+      "INTU": "인튜이트 (Intuit)",
+      "CMCSA": "컴캐스트 (Comcast)",
+      "UBER": "우버 (Uber)",
+      "BKNG": "부킹 홀딩스 (Booking)",
+      "COP": "코노코필립스 (ConocoPhillips)",
+      "AMGN": "암젠 (Amgen)",
+      "NEE": "넥스트에라 에너지 (친환경 전력)",
+      "LOW": "로우즈 (Lowe's)",
+      "UNP": "유니온 퍼시픽 (미국 1위 철도)",
+      "SPGI": "S&P 글로벌 (S&P Global)",
+      "HON": "허니웰 (Honeywell)",
+      "AXP": "아메리칸 익스프레스 (Amex)",
+      "RTX": "RTX (레이시온 방산)",
+      "SYK": "스트라이커 (Stryker)",
+      "GS": "골드만삭스 (Goldman Sachs)",
+      "BLK": "블랙록 (BlackRock)",
+      "T": "AT&T (미국 통신)",
+      "PLTR": "팔란티어 (Palantir)",
+      "ELV": "엘레반스 헬스 (Elevance)",
+      "ETN": "이튼 (전력 인프라 대장주)",
+      "TJX": "TJX 컴퍼니 (TJ Maxx)",
+      "MDT": "메드트로닉 (Medtronic)",
+      "PGR": "프로그레시브 (Progressive)",
+      "BSX": "보스턴 사이언티픽 (Boston Sci)",
+      "REGN": "리제네론 (Regeneron)",
+      "LRCX": "램리서치 (Lam Research)",
+      "C": "씨티그룹 (Citigroup)",
+      "CB": "처브 (Chubb)",
+      "ADI": "아나로그디바이스 (ADI)",
+      "VRTX": "버텍스 파마슈티컬 (Vertex)",
+      "LMT": "록히드 마틴 (Lockheed Martin)",
+      "SCHW": "찰스 슈왑 (Charles Schwab)",
+      "CI": "시그나 (Cigna)",
+      "MMC": "마시 앤 맥레넌 (Marsh McLennan)",
+      "PANW": "팔로알토 네트웍스 (Palo Alto)",
+      "MU": "마이크론 (Micron)",
+      "KLAC": "KLA 코퍼레이션 (KLA)",
+      "SBUX": "스타벅스 (Starbucks)",
+      "DE": "존 디어 (John Deere)",
+      "ADP": "ADP (오토매틱 데이터)",
+      "FI": "파이서브 (Fiserv)",
+      "MO": "알트리아 (Altria)",
+      "SO": "서던 컴퍼니 (Southern)",
+      "CRWD": "크라우드스트라이크 (CrowdStrike)",
+      "BMY": "브리스톨 마이어스 (Bristol Myers)",
+      "GILD": "길리어드 사이언스 (Gilead)",
+      "ZTS": "조에티스 (Zoetis)",
+      "SMCI": "슈퍼마이크로 (Supermicro)",
+      "TSM": "TSMC (대만반도체 ADR)"
+    };
+
+    function getStockDisplayName(ticker, fallback) {
+      if (!ticker) return fallback || '';
+      const upper = String(ticker).toUpperCase().trim();
+      if (TOP100_KR_NAMES[upper]) return TOP100_KR_NAMES[upper];
+      return fallback || upper;
+    }
+
     async function fetchDashboard() {
       try {
         const res = await fetch(API_URL);
@@ -1896,7 +2007,7 @@
             <tr>
               <td>
                 <span class="ticker-badge">${p.ticker}</span>
-                <span class="company-name">${p.stockName || p.ticker}</span>
+                <span class="company-name">${getStockDisplayName(p.ticker, p.stockName)}</span>
               </td>
               <td class="number-mono">${p.quantity}주</td>
               <td class="number-mono">${formatUsd(p.buyPrice)}</td>
@@ -2601,7 +2712,7 @@
               <div class="log-feed-meta">
                 <span style="font-family: var(--font-mono); font-size: 13px; color: var(--text-muted);">[${l.time || ''}]</span>
                 <span class="ticker-badge">${l.ticker}</span>
-                <span style="font-size: 15px; font-weight: 700; color: #ffffff;">${l.stock_name || l.ticker}</span>
+                <span style="font-size: 15px; font-weight: 700; color: #ffffff;">${getStockDisplayName(l.ticker, l.stock_name)}</span>
                 <span style="font-family: var(--font-mono); font-size: 13px; margin-left: 6px;">$${Number(l.order_price || 0).toFixed(2)}</span>
                 <span class="${changeClass}" style="font-family: var(--font-mono); font-size: 12px; font-weight: 700;">(${changeSign}${l.pct_change}%)</span>
                 <span class="log-badge-action ${actionBadgeClass}">${actionIcon} ${actionLabel}</span>
@@ -2704,7 +2815,7 @@
             <div class="earnings-card-header">
               <div class="earnings-company-info">
                 <span class="ticker-badge">${e.ticker}</span>
-                <span style="font-size: 16px; font-weight: 700; color: #ffffff;">${e.stockName || e.ticker}</span>
+                <span style="font-size: 16px; font-weight: 700; color: #ffffff;">${getStockDisplayName(e.ticker, e.stockName)}</span>
                 <span class="badge" style="background: rgba(255, 255, 255, 0.06); font-family: var(--font-mono); font-size: 11px;">${e.quarter || '2026 Q3'}</span>
                 <span class="earnings-type-badge ${typeBadgeClass}">${typeIcon} ${e.eventType || '실적 공시'}</span>
               </div>

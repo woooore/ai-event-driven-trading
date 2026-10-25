@@ -828,13 +828,15 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
     # ★ 웹 대시보드 실시간 로그 탭을 위해 모든 분석 결과(HOLD 포함)를 Kafka 및 HTTP로 전송
     try:
         now_dt = get_now_kst()
+        stock_kr_info = TOP_50_US_STOCKS.get(signal.ticker)
+        stock_display_name = stock_kr_info["name"] if (stock_kr_info and "name" in stock_kr_info) else (signal.stock_name or signal.ticker)
         analysis_log_payload = {
             "id": f"al-{int(time.time() * 1000)}",
             "timestamp": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
             "date": now_dt.strftime("%Y-%m-%d"),
             "time": now_dt.strftime("%H:%M:%S"),
             "ticker": signal.ticker,
-            "stock_name": signal.stock_name,
+            "stock_name": stock_display_name,
             "action": signal.action,
             "confidence": round(signal.confidence, 2),
             "news_impact_score": signal.news_impact_score,
@@ -941,13 +943,15 @@ def scan_market_wide_news(batch_size: int = 10):
             # 웹 대시보드 실시간 로그 탭을 위해 모든 분석 결과(HOLD 포함)를 Kafka 및 HTTP로 전송
             try:
                 now_dt = get_now_kst()
+                stock_kr_info = TOP_50_US_STOCKS.get(signal.ticker)
+                stock_display_name = stock_kr_info["name"] if (stock_kr_info and "name" in stock_kr_info) else (signal.stock_name or signal.ticker)
                 analysis_log_payload = {
                     "id": f"al-{int(time.time() * 1000)}",
                     "timestamp": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
                     "date": now_dt.strftime("%Y-%m-%d"),
                     "time": now_dt.strftime("%H:%M:%S"),
                     "ticker": signal.ticker,
-                    "stock_name": signal.stock_name,
+                    "stock_name": stock_display_name,
                     "action": signal.action,
                     "confidence": round(signal.confidence, 2),
                     "news_impact_score": signal.news_impact_score,
