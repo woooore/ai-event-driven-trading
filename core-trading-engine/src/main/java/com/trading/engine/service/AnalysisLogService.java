@@ -42,6 +42,22 @@ public class AnalysisLogService {
             dto.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         }
 
+        // 중복 방지: 동일 ID 또는 동일 티커 + 날짜 + 시간 + 헤드라인 이미 존재 시 중복 추가 방지
+        for (int i = 0; i < logs.size(); i++) {
+            AnalysisLogDto exist = logs.get(i);
+            if (exist.getId() != null && exist.getId().equals(dto.getId())) {
+                logs.set(i, dto); // 기존 동일 ID 항목 업데이트
+                saveToFile();
+                return;
+            }
+            if (Objects.equals(exist.getTicker(), dto.getTicker())
+                    && Objects.equals(exist.getDate(), dto.getDate())
+                    && Objects.equals(exist.getTime(), dto.getTime())
+                    && Objects.equals(exist.getHeadline(), dto.getHeadline())) {
+                return; // 이미 등록된 동일 분석 로그이므로 무시
+            }
+        }
+
         logs.add(0, dto); // 최신순 앞에 추가
 
         if (logs.size() > MAX_LOGS) {
@@ -194,8 +210,20 @@ public class AnalysisLogService {
             try {
                 List<AnalysisLogDto> loaded = objectMapper.readValue(file, new TypeReference<>() {});
                 logs.clear();
-                logs.addAll(loaded);
-                log.info(">> [AI 감지 로그] 저장된 분석 로그 {}건 로드 완료", logs.size());
+                Set<String> seenKeys = new HashSet<>();
+                for (AnalysisLogDto l : loaded) {
+                    // ID가 같거나 (티커 + 날짜 + 시간 + 헤드라인)이 동일한 중복 로그 필터링
+                    String contentKey = l.getTicker() + "|" + l.getDate() + "|" + l.getTime() + "|" + l.getHeadline();
+                    String idKey = l.getId() != null ? l.getId() : "";
+                    if (seenKeys.contains(contentKey) || (!idKey.isEmpty() && seenKeys.contains(idKey))) {
+                        continue;
+                    }
+                    seenKeys.add(contentKey);
+                    if (!idKey.isEmpty()) seenKeys.add(idKey);
+                    logs.add(l);
+                }
+                log.info(">> [AI 감지 로그] 저장된 분석 로그 {}건 로드 완료 (중복 제거 후)", logs.size());
+                saveToFile();
             } catch (Exception e) {
                 log.error("AI 분석 로그 파일 로드 실패: {}", e.getMessage());
             }

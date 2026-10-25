@@ -849,12 +849,12 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
             "bollinger_b": signal.bollinger_b,
             "quant_score": signal.quant_score
         }
-        # 1. Kafka 전송
-        producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)
-        producer.flush(timeout=2)
-
-        # 2. Web HTTP 엔진 직접 전송 (100% 즉시 반영 보장)
-        send_http_post("/api/analysis-logs", analysis_log_payload)
+        # 1. Kafka 전송 우선 시도 (실패 시에만 HTTP fallback 전송하여 중복 방지)
+        try:
+            producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)
+            producer.flush(timeout=2)
+        except Exception as ke:
+            send_http_post("/api/analysis-logs", analysis_log_payload)
     except Exception as le:
         log_ts(f"   ⚠️ [분석 로그 전송 실패]: {le}")
 
@@ -962,12 +962,12 @@ def scan_market_wide_news(batch_size: int = 10):
                     "bollinger_b": signal.bollinger_b,
                     "quant_score": signal.quant_score
                 }
-                # 1. Kafka 전송
-                producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)
-                producer.flush(timeout=2)
-
-                # 2. Web HTTP 엔진 직접 전송 (100% 즉시 반영 보장)
-                send_http_post("/api/analysis-logs", analysis_log_payload)
+                # 1. Kafka 전송 우선 시도 (실패 시에만 HTTP fallback 전송하여 중복 방지)
+                try:
+                    producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)
+                    producer.flush(timeout=2)
+                except Exception as ke:
+                    send_http_post("/api/analysis-logs", analysis_log_payload)
             except Exception as le:
                 log_ts(f"   ⚠️ [분석 로그 전송 실패]: {le}")
 

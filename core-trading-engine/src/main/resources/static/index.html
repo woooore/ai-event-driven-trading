@@ -2541,7 +2541,18 @@
       const badgeCount = document.getElementById('log-count-badge');
       if (!feedEl) return;
 
-      logs = logs || [];
+      // 클라이언트 사이드 중복 방지 (동일 ID 또는 티커+시간+헤드라인)
+      const seen = new Set();
+      const uniqueLogs = [];
+      (logs || []).forEach(l => {
+        const key = (l.id ? l.id : '') + '|' + (l.ticker || '') + '|' + (l.time || '') + '|' + (l.headline || '');
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueLogs.push(l);
+        }
+      });
+      logs = uniqueLogs;
+
       if (badgeCount) badgeCount.textContent = `${logs.length}건`;
 
       // KPI 카운트 집계
