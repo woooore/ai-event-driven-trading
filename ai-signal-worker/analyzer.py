@@ -465,6 +465,38 @@ Pydantic 스키마에 맞춰 JSON으로 추출하라. 단순 루머나 시황 �
         send_http_post("/api/earnings", payload)
 
         log_ts(f"📊 [Top 100 실적 이벤트 등록] {ticker} ({stock_name}) | {res.event_type} | {res.quarter} | {headline[:60]}")
+
+        # ★ 3. PEAD (Post-Earnings-Announcement Drift) 실적 서프라이즈 고속 매수 트랙
+        if res.event_type in ["어닝 서프라이즈", "가이던스 상향"] and pct_change < 4.5:
+            market_open, market_msg = is_us_market_open_or_premarket()
+            if market_open:
+                try:
+                    mk_data = get_market_and_news(ticker)
+                    curr_price = mk_data.get('current_price', 100.0)
+                    quant = mk_data.get('quant', {})
+                    tp = quant.get('dynamic_take_profit', round(curr_price * 1.05, 2))
+                    sl = quant.get('dynamic_stop_loss', round(curr_price * 0.95, 2))
+
+                    pead_signal = StockSignal(
+                        ticker=ticker,
+                        stock_name=stock_name,
+                        exchange="NASD",
+                        action="BUY",
+                        confidence=0.82,
+                        order_price=round(curr_price, 2),
+                        take_profit=tp,
+                        stop_loss=sl,
+                        sentiment="POSITIVE",
+                        reason=f"[PEAD 어닝 서프라이즈 퀀트 매수] {res.quarter} {res.event_type} 포착! {res.eps_summary}. 월가 실적 모멘텀 드리프트 추종 진입.",
+                        news_impact_score=85,
+                        priced_in_risk="LOW",
+                        position_size_pct=7.0
+                    )
+                    producer.produce('stock-signals', key=ticker, value=pead_signal.model_dump_json(), callback=delivery_report)
+                    producer.flush(timeout=3)
+                    log_ts(f"🚀 [PEAD 실적 서프라이즈 고속 매수 발동] {ticker} ({stock_name}) 비중 7.0% 주문 전송 완료!")
+                except Exception as pe:
+                    log_ts(f"⚠️ [PEAD 주문 실행 실패]: {pe}")
     except Exception as e:
         log_ts(f"[실적 이벤트 추출 오류] {ticker}: {e}")
 
@@ -573,7 +605,10 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
                 f"  실제 매매 결과: 손익 {j.get('pnl_pct', 0.0):+}% ({j.get('pnl_usd', 0.0):+} USD 손실)\n"
                 f"  ★ 핵심 교훈: {j.get('lesson_learned')}\n"
             )
-        rag_section += "=> [엄격 지침]: 과거 이와 유사한 기사에서 실제 손실이 발생했으니 동일한 실수를 반복하지 말고 지극히 보수적으로 평가(HOLD)할 것!\n"
+        rag_section += (
+            "=> [RAG 교훈 적용 지침]: 과거 손실은 주로 '당일 주가가 이미 +4.5% 이상 폭등했을 때 추격 매수'했거나 '단순 악재'를 간과했기 때문임.\n"
+            "   당일 주가 변동률이 완만하고(+3.0% 미만) RSI(65 미만)가 안정권이라면, 과거 손실에 위축되어 무조건 HOLD하지 말고 소액 정찰대(3.0~5.0%) 분할 매수로 진입하라.\n"
+        )
 
     # 퀀트 기술적 지표 진단 요약
     quant_summary = (
@@ -587,35 +622,32 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
 
     system_prompt = (
         "너는 미국 월스트리트 최상위 헤지펀드의 시니어 이벤트 드리븐(Event-Driven) & 퀀트(Quant) 트레이더다.\n"
-        "주어진 미국 주식의 현재가, 당일 변동률, 종합 퀀트 지표(RSI, 볼린저 밴드 %B, MACD, ATR, 퀀트 스코어), 과거 실패 매매 일지(RAG), 그리고 최신 뉴스를 종합 분석하여 트레이딩 결정을 내려라.\n\n"
-        "【핵심 매매 원칙: 팩트 호재 우선 & 유연한 분할 매수 집행】:\n"
-        "- 볼린저 밴드 하단이나 과매도 지표만 보고 매수하는 기술적 단독 매수는 금지된다. 반드시 실질적인 펀더멘털 뉴스 팩트 촉매가 결합되어야 한다.\n"
-        "- 반대로, 구체적인 실적 서프라이즈, 매출/이익 가이던스 상향(예: 슈퍼마이크로 40억 달러 매출 상향 등), 대규모 공급/수주 계약 체결 등 명확한 팩트 호재가 포착되면, 지나치게 '선반영'을 핑계로 매수를 망설이지 말라!\n"
-        "- 확실한 팩트가 있는 우량주는 호재 발표 후 모멘텀을 타고 추가 상승하는 경향이 강하므로, 당일 주가가 +4.5% 이상 폭등하지 않았다면 적극적으로 분할 매수(action='BUY', confidence >= 0.75, position_size_pct: 4.0~10.0%) 결정을 내려라.\n\n"
-        "【필수 매매 규칙 & 손실 방어 원칙】:\n"
-        "1. [뉴스 촉매 영향도 평가 (news_impact_score: 0~100)]:\n"
-        "   - 단순 시황 중계, 애널리스트 의견, 근거 없는 루머는 50점 이하.\n"
-        "   - 구체적인 실적 호조, 대형 수주/공급 계약, 규제 승인 등 실질적 펀더멘털 변화는 65점 이상.\n"
-        "   - ★ BUY 액션은 news_impact_score >= 60 이상일 때 허용된다.\n"
-        "2. [선반영(Priced-in) 평가 (priced_in_risk: LOW / MEDIUM / HIGH)]:\n"
-        "   - 이미 당일 주가가 +4.5% 이상 급등했거나, 수일 전부터 시장에 완전히 퍼져 차익실현 매물 출회가 임박한 경우에만 priced_in_risk='HIGH'로 지정하고 HOLD하라.\n"
-        "   - 신선한 호재이거나 당일 주가 상승폭이 완만한 경우(+4.5% 미만)는 LOW 또는 MEDIUM으로 평가하고 적극 분할 매수하라.\n"
-        "3. [기술적 과매수 기준]:\n"
-        "   - RSI(14)가 76.0 이상인 극단적 과열 구간이거나 볼린저 밴드 상단 완전 이탈(%B >= 1.05) 시에만 추격 매수를 자제하고 HOLD하라. (RSI 65~75는 강한 모멘텀 구간으로 팩트 호재 시 매수 가능)\n"
-        "4. [비중 배분 산정 (position_size_pct: 3.0 ~ 15.0%)]:\n"
-        "   - 총 시드 2,000만원 기준 종목당 권장 투자 비중.\n"
-        "   - 특급 팩트 호재(news_impact_score >= 80) + 양호한 기술적 위치 => 8.0 ~ 12.0%\n"
-        "   - 일반 우량 호재(news_impact_score 60~79) => 4.0 ~ 7.0%\n"
-        "   - 신중한 분할 진입 => 3.0 ~ 4.0%\n"
-        "   - HOLD 또는 SELL일 경우 position_size_pct = 0.0\n"
-        "5. [악재 감지 시 즉시 긴급 탈출 SELL]:\n"
-        "   - 대규모 소송 패소, 거액 과징금, 실적 쇼크, 회계 부정, 규제 제재 시 즉시 action='SELL', confidence >= 0.75로 전량 탈출하라.\n"
-        "6. BUY 결정 시 가격 기준:\n"
+        "주어진 미국 주식의 현재가, 당일 변동률, 종합 퀀트 지표(RSI, 볼린저 밴드 %B, MACD, ATR, 퀀트 스코어), 과거 매매 일지(RAG), 그리고 최신 뉴스를 종합 분석하여 트레이딩 결정을 내려라.\n\n"
+        "【핵심 철학: 모든 뉴스에 100% 완벽한 호재는 없다 - 퀀트 랭킹 & 분할 매수 실행】:\n"
+        "- 시장에 100% 확실하고 리스크 없는 호재는 존재하지 않는다. 모든 것을 '선반영'이나 '불확실성' 핑계로 HOLD(관망)만 하면 계좌가 굴러가지 않는다.\n"
+        "- 우리 시스템에는 엄격한 ATR 기반 동적 손절가(stop_loss, -3~5% 내외)와 익절가(take_profit, +3~6% 내외) 안전장치가 이미 완벽히 구축되어 있다. 리스크를 두려워하지 말고 원칙에 따라 적극적으로 기회를 잡아라!\n\n"
+        "【BUY(매수) 진입 허용 2대 트랙】:\n"
+        "1. [트랙 A: 팩트 호재 모멘텀 매수 (Event-Driven)]\n"
+        "   - 실적 호조, EPS/매출 가이던스 상향, 대형 수주/공급 계약, 신제품/AI 신기술 출시 등 긍정적 팩트가 있는 경우.\n"
+        "   - 당일 주가가 +4.0% 미만으로 아직 폭등하지 않았다면 적극 매수 (action='BUY', confidence: 0.70~0.85, position_size_pct: 5.0~8.0%).\n"
+        "2. [트랙 B: 퀀트 저평가/눌림목 정찰대 매수 (Quant Value & Mean-Reversion)]\n"
+        "   - 뉴스가 대박 호재가 아니더라도(단순 신제품, 파트너십, 시장 분석 등 50~60점 일반 뉴스), 치명적 악재(소송, 분식회계, 규제 제재)가 없고\n"
+        "   - 퀀트 알파 스코어 >= 55점 AND RSI가 30~55 안정/과매도 구간이며 볼린저 밴드 중심/하단권인 경우\n"
+        "   - ➔ 적극적으로 1차 소액 정찰대 분할 매수 (action='BUY', confidence: 0.65~0.75, position_size_pct: 3.0~4.5%)를 실행하라!\n\n"
+        "【필수 매매 규칙 & 위험 방어 원칙】:\n"
+        "1. [선반영(Priced-in) 평가]:\n"
+        "   - 당일 주가가 이미 +4.0% 이상 급등했을 때만 priced_in_risk='HIGH'로 지정하고 HOLD하라.\n"
+        "   - 주가가 -2%~+2% 사이로 완만하거나 눌려있다면 priced_in_risk='LOW' 또는 'MEDIUM'으로 평가하고 매수를 주저하지 말라.\n"
+        "2. [기술적 과매수 기준]:\n"
+        "   - RSI(14)가 76.0 이상인 극단적 과열 구간이거나 볼린저 상단 완전 이탈(%B >= 1.05) 시에만 HOLD하라.\n"
+        "3. [악재 감지 시 즉시 긴급 탈출 SELL]:\n"
+        "   - 대규모 소송 패소, 회계 부정, 실적 쇼크, 규제 제재 시 즉시 action='SELL', confidence >= 0.75로 전량 탈출하라.\n"
+        "4. BUY 결정 시 가격 기준:\n"
         f"   - order_price: 현재 시장 가격 (${current_price}) 기준\n"
         f"   - take_profit: ATR 변동성 기반 동적 익절가 (${dynamic_tp})\n"
         f"   - stop_loss: ATR 변동성 기반 동적 손절가 (${dynamic_sl})\n"
         f"   - exchange: '{exchange}'\n"
-        "7. reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 뉴스 팩트, 선반영 판단, 기술적 상태를 함께 언급하여 명확히 작성하라. (절대 영어가 아닌 한국어로 작성할 것)"
+        "5. reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 뉴스 팩트, 퀀트/선반영 상태를 함께 언급하여 작성하라."
     )
 
     user_prompt = f"""
@@ -651,16 +683,16 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
 
         # 1차: 뉴스 팩트 촉매 및 선반영 하드 안전장치
         if signal.action == "BUY":
-            # 1. 뉴스 촉매 강도 미달 차단 (최소 60점 이상 필요)
-            if signal.news_impact_score is not None and signal.news_impact_score < 60:
-                log_ts(f"   🛡️ [뉴스 촉매 부족 차단] {ticker} 뉴스 영향도({signal.news_impact_score}점) < 60! 단순 밴드/노이즈 매수 차단 -> HOLD 전환")
+            # 1. 뉴스 촉매 강도 검증: 퀀트 점수가 55점 이상이고 치명적 악재가 없다면 뉴스점수 50점 이상도 정찰대 매수 허용
+            if signal.news_impact_score is not None and signal.news_impact_score < 50:
+                log_ts(f"   🛡️ [뉴스 영향도 미달 차단] {ticker} 뉴스 영향도({signal.news_impact_score}점) < 50! -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
-                signal.reason = f"[실질 뉴스 촉매 부족] 뉴스 영향도 {signal.news_impact_score}점으로 펀더멘털 호재 팩트 미비. {signal.reason}"
+                signal.reason = f"[뉴스 영향도 부족] 뉴스 점수 {signal.news_impact_score}점으로 촉매 부족. {signal.reason}"
 
-            # 2. 선반영(Priced-in) 및 '뉴스에 팔아라' 매물받이 차단 (HIGH 이거나 MEDIUM이면서 +4.5% 이상 폭등 시)
-            elif signal.priced_in_risk == "HIGH" or (signal.priced_in_risk == "MEDIUM" and pct_change >= 4.5):
+            # 2. 선반영(Priced-in) 차단: 주가가 실제로 당일 +4.0% 이상 폭등했을 때만 차익실현 매물받이로 차단!
+            elif (signal.priced_in_risk == "HIGH" and pct_change >= 4.0) or (signal.priced_in_risk == "MEDIUM" and pct_change >= 4.5):
                 log_ts(f"   🛡️ [선반영(Priced-in) 차단] {ticker} 선반영 위험({signal.priced_in_risk}, 변동률 {pct_change:+}%). 차익실현 매물받이 방지 -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
@@ -669,7 +701,7 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
 
             # 3. 기술적 극단 과매수 차단 (76 이상)
             elif rsi is not None and rsi >= 76.0:
-                log_ts(f"   🛡️ [기술적 과매수 차단] {ticker} RSI({rsi:.1f}) >= 76 극단 과열! 세력 매물받이 방어로 HOLD 전환")
+                log_ts(f"   🛡️ [기술적 과매수 차단] {ticker} RSI({rsi:.1f}) >= 76 극단 과열! -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
@@ -677,14 +709,14 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
 
             # 4. 볼린저 상단 이탈 과열 차단 (%B >= 1.05)
             elif bollinger_b is not None and bollinger_b >= 1.05:
-                log_ts(f"   🛡️ [볼린저 상단 과열 차단] {ticker} 볼린저 밴드 상단 이탈(%B={bollinger_b}) 과열! HOLD 전환")
+                log_ts(f"   🛡️ [볼린저 상단 과열 차단] {ticker} 볼린저 밴드 상단 이탈(%B={bollinger_b}) 과열! -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
                 signal.reason = f"[볼린저 밴드 상단 과열 차단] 주가가 볼린저 상단을 크게 돌파(%B {bollinger_b})하여 조정 압력 우려. {signal.reason}"
 
-            # 5. 퀀트 스코어 미달 차단
-            elif quant_score < 45:
+            # 5. 퀀트 스코어 미달 차단 (40점 미만일 때만 차단)
+            elif quant_score < 40:
                 log_ts(f"   🛡️ [퀀트 알파 스코어 차단] {ticker} 퀀트 점수({quant_score}점) 저조로 HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
