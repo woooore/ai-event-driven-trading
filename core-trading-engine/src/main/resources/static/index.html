@@ -819,6 +819,166 @@
       box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
     }
 
+    /* ========================================== */
+    /* 💼 보유 잔고 (Portfolio Balance) 전용 스타일 */
+    /* ========================================== */
+    .balance-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .balance-kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 18px 20px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .balance-kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .balance-kpi-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .balance-kpi-value {
+      font-size: 22px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: #ffffff;
+    }
+
+    .balance-kpi-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      margin-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .balance-banner {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.12));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 14px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13.5px;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    .balance-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .balance-stock-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 22px;
+      backdrop-filter: blur(12px);
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .balance-stock-card:hover {
+      border-color: rgba(99, 102, 241, 0.5);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      transform: translateY(-3px);
+    }
+
+    .balance-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .balance-card-company {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .balance-card-pnl {
+      text-align: right;
+    }
+
+    .balance-card-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .balance-row-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .balance-row-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .balance-row-val {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #ffffff;
+      font-size: 14px;
+    }
+
+    .balance-progress-box {
+      margin-bottom: 16px;
+    }
+
+    .balance-progress-bar-bg {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .balance-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-indigo), var(--accent-cyan));
+      border-radius: 3px;
+    }
+
+    .balance-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
     /* CHART TAB STYLES */
     .chart-search-section {
       background: var(--bg-card);
@@ -1413,7 +1573,7 @@
         </div>
       </div>
       <div class="header-badges">
-        <button class="btn-reset-portfolio" onclick="resetPortfolioData()" title="포트폴리오 원금 ₩10,000,000으로 초기화">
+        <button class="btn-reset-portfolio" onclick="resetPortfolioData()" title="포트폴리오 원금 ₩20,000,000으로 초기화">
           <span>🔄 데이터 초기화</span>
         </button>
         <div class="badge badge-live">
@@ -1501,6 +1661,11 @@
       <button class="nav-tab-btn active" id="btn-tab-realtime" onclick="switchMainTab('realtime')">
         <span style="font-size: 16px;">📊</span>
         <span>실시간 트레이딩 대시보드</span>
+      </button>
+      <button class="nav-tab-btn" id="btn-tab-balance" onclick="switchMainTab('balance')">
+        <span style="font-size: 16px;">💼</span>
+        <span>보유 잔고 (현재 보유 종목)</span>
+        <span class="tab-badge" id="tab-balance-count-badge" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;">0종목</span>
       </button>
       <button class="nav-tab-btn" id="btn-tab-briefing" onclick="switchMainTab('briefing')">
         <span style="font-size: 16px;">✨</span>
@@ -1595,6 +1760,124 @@
         <div id="ticker-journey-empty" class="empty-state">
           <div class="empty-state-icon">📈</div>
           <p style="font-size: 13px;">체결된 종목별 매매 타임라인이 아직 없습니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: 보유 잔고 (PORTFOLIO BALANCE) -->
+    <div id="tab-pane-balance" style="display: none;">
+      <!-- BALANCE TOP KPI -->
+      <div class="balance-kpi-grid">
+        <div class="balance-kpi-card">
+          <div class="balance-kpi-label">
+            <span>총 평가 자산</span>
+            <span>💼</span>
+          </div>
+          <div class="balance-kpi-value" id="bal-total-asset-krw">₩20,000,000</div>
+          <div class="balance-kpi-sub">
+            <span id="bal-total-asset-usd">$14,814.81</span>
+            <span id="bal-total-return" class="profit-positive" style="font-weight: 700;">+0.00%</span>
+          </div>
+        </div>
+
+        <div class="balance-kpi-card">
+          <div class="balance-kpi-label">
+            <span>총 매입 금액 (투자 원금)</span>
+            <span>💰</span>
+          </div>
+          <div class="balance-kpi-value" id="bal-total-buy-krw">₩0</div>
+          <div class="balance-kpi-sub">
+            <span id="bal-total-buy-usd">$0.00</span>
+            <span style="color: var(--text-muted);">보유 주식 원금</span>
+          </div>
+        </div>
+
+        <div class="balance-kpi-card">
+          <div class="balance-kpi-label">
+            <span>실시간 평가 손익</span>
+            <span>📈</span>
+          </div>
+          <div class="balance-kpi-value profit-positive" id="bal-unrealized-pnl-krw">+₩0</div>
+          <div class="balance-kpi-sub">
+            <span id="bal-unrealized-pnl-usd">+$0.00</span>
+            <span id="bal-unrealized-rate" class="profit-positive" style="font-weight: 700;">+0.00%</span>
+          </div>
+        </div>
+
+        <div class="balance-kpi-card">
+          <div class="balance-kpi-label">
+            <span>가용 예수금 (현금 잔고)</span>
+            <span>💵</span>
+          </div>
+          <div class="balance-kpi-value" id="bal-cash-krw">₩20,000,000</div>
+          <div class="balance-kpi-sub">
+            <span id="bal-cash-usd">$14,814.81</span>
+            <span style="color: var(--text-muted);">매수 가능 여력</span>
+          </div>
+        </div>
+
+        <div class="balance-kpi-card">
+          <div class="balance-kpi-label">
+            <span>보유 종목 수</span>
+            <span>🎯</span>
+          </div>
+          <div class="balance-kpi-value" id="bal-holding-count" style="color: var(--accent-cyan);">0개 종목</div>
+          <div class="balance-kpi-sub">
+            <span>종목당 약 500만원 (25%) 배정</span>
+            <span style="color: var(--text-muted);">최대 4종목</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STRATEGY INFO BANNER -->
+      <div class="balance-banner">
+        <span style="font-size: 20px;">💡</span>
+        <div>
+          <strong>종목당 500만원 엄선 집중 투자 포트폴리오:</strong>
+          S&P500 인덱스 펀드식 1~2주 분산 매수를 전면 배제하고, 차트상 <strong>며칠 연속 하락(눌림목/낙폭과대) + 적정/저PER + 펀더멘털 실적 양호 + 치명적 악재 부재</strong> 조건을 충족한 진짜 기회 종목에 각각 <strong>약 500만원 단위</strong>로 비중을 실어 투자합니다.
+        </div>
+      </div>
+
+      <!-- DYNAMIC BALANCE STOCK CARDS GRID -->
+      <div class="balance-cards-grid" id="balance-cards-grid">
+        <!-- DYNAMIC CARDS -->
+      </div>
+
+      <!-- DETAILED BALANCE TABLE -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>📋 보유 포지션 상세 원장 (HOLDING DETAILS)</span>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted);">실시간 평가손익 및 목표 익절/손절선 관리</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>종목 (TICKER)</th>
+                <th>보유 수량</th>
+                <th>매수 평단가</th>
+                <th>실시간 현재가</th>
+                <th>투자 원금</th>
+                <th>현재 평가액</th>
+                <th>평가 손익</th>
+                <th>수익률</th>
+                <th>익절선(+3%) / 손절선(-6.5%)</th>
+                <th>액션</th>
+              </tr>
+            </thead>
+            <tbody id="balance-table-tbody">
+              <!-- DYNAMIC ROWS -->
+            </tbody>
+          </table>
+        </div>
+        <div id="balance-empty-state" class="empty-state" style="padding: 60px 20px;">
+          <div class="empty-state-icon">💤</div>
+          <p style="font-size: 15px; font-weight: 700; margin-bottom: 6px; color: #f3f4f6;">현재 보유 중인 종목이 없습니다.</p>
+          <p style="font-size: 13px; color: var(--text-muted); max-width: 540px; margin: 0 auto; line-height: 1.5;">
+            AI 시그널 워커가 미국 시총 100위 우량주 중 <strong>'며칠 연속 하락(눌림목) + 합리적 PER + 실적 양호 + 악재 없음'</strong> 조건을 동시에 만족하는 기회 종목을 24시간 탐색하고 있습니다. 감지 시 종목당 약 500만원 단위로 매수됩니다.
+          </p>
         </div>
       </div>
     </div>
@@ -2079,158 +2362,254 @@
       window.lastDashboardData = data;
       renderDiaryTab(data);
 
+      // 6. 💼 보유 잔고 (Portfolio Balance) 전용 탭 렌더링
+      renderBalanceTab(data);
+
       document.getElementById('last-updated-time').textContent = '동기화: ' + new Date().toLocaleTimeString('ko-KR');
     }
 
-    // 종목별 매매 히스토리 & 타임라인 렌더링 함수
-    function renderTickerJourneys(data) {
-      const logs = data.tradeLogs || [];
-      const positions = data.positions || [];
-      const container = document.getElementById('ticker-journey-grid');
-      const emptyEl = document.getElementById('ticker-journey-empty');
-      const countBadge = document.getElementById('badge-ticker-journey-count');
+    // ==========================================
+    // 💼 보유 잔고 (Portfolio Balance) 전용 탭 렌더러
+    // ==========================================
+    function renderBalanceTab(data) {
+      if (!data) return;
       const rate = data.usdKrwRate || 1350.0;
+      const positions = data.positions || [];
+      const totalAssetUsd = data.totalAssetUsd || 0;
+      const totalAssetKrw = data.totalAssetKrw || 0;
+      const totalReturn = data.totalReturnRate || 0;
+      const cashUsd = data.currentCashUsd || 0;
+      const cashKrw = data.currentCashKrw || 0;
 
-      const byTicker = {};
-
-      // 1. 현재 보유 중인 종목 먼저 등록
+      // 1. 보유 종목 투자 원금 및 평가금액 계산
+      let totalBuyUsd = 0;
+      let totalValuationUsd = 0;
       positions.forEach(p => {
-        const t = p.ticker.toUpperCase();
-        if (!byTicker[t]) {
-          byTicker[t] = {
-            ticker: t,
-            stockName: p.stockName || t,
-            activePosition: p,
-            logs: []
-          };
-        } else {
-          byTicker[t].activePosition = p;
-        }
+        totalBuyUsd += (p.buyPrice || 0) * (p.quantity || 0);
+        totalValuationUsd += (p.currentPrice || 0) * (p.quantity || 0);
       });
+      const totalBuyKrw = totalBuyUsd * rate;
+      const totalValuationKrw = totalValuationUsd * rate;
+      const unrealizedPnlUsd = totalValuationUsd - totalBuyUsd;
+      const unrealizedPnlKrw = unrealizedPnlUsd * rate;
+      const unrealizedRate = totalBuyUsd > 0 ? (unrealizedPnlUsd / totalBuyUsd) * 100 : 0.0;
 
-      // 2. 체결 히스토리 로그 등록
-      logs.forEach(l => {
-        const t = l.ticker.toUpperCase();
-        if (!byTicker[t]) {
-          byTicker[t] = {
-            ticker: t,
-            stockName: l.stockName || t,
-            activePosition: null,
-            logs: []
-          };
-        }
-        byTicker[t].logs.push(l);
-      });
+      // KPI UI 동기화
+      const elAssetKrw = document.getElementById('bal-total-asset-krw');
+      if (elAssetKrw) elAssetKrw.textContent = formatKrw(totalAssetKrw);
+      const elAssetUsd = document.getElementById('bal-total-asset-usd');
+      if (elAssetUsd) elAssetUsd.textContent = formatUsd(totalAssetUsd);
 
-      const tickers = Object.keys(byTicker);
-      countBadge.textContent = `${tickers.length}개 종목`;
+      const retEl = document.getElementById('bal-total-return');
+      if (retEl) {
+        retEl.textContent = formatPct(totalReturn);
+        retEl.className = totalReturn >= 0 ? 'profit-positive' : 'profit-negative';
+      }
 
-      if (tickers.length === 0) {
-        container.innerHTML = '';
-        emptyEl.style.display = 'block';
+      const elBuyKrw = document.getElementById('bal-total-buy-krw');
+      if (elBuyKrw) elBuyKrw.textContent = formatKrw(totalBuyKrw);
+      const elBuyUsd = document.getElementById('bal-total-buy-usd');
+      if (elBuyUsd) elBuyUsd.textContent = formatUsd(totalBuyUsd);
+
+      const pnlSign = unrealizedPnlUsd >= 0 ? '+' : '';
+      const pnlKrwEl = document.getElementById('bal-unrealized-pnl-krw');
+      if (pnlKrwEl) {
+        pnlKrwEl.textContent = `${pnlSign}${formatKrw(unrealizedPnlKrw)}`;
+        pnlKrwEl.className = `balance-kpi-value ${unrealizedPnlUsd >= 0 ? 'profit-positive' : 'profit-negative'}`;
+      }
+
+      const elPnlUsd = document.getElementById('bal-unrealized-pnl-usd');
+      if (elPnlUsd) elPnlUsd.textContent = `${pnlSign}${formatUsd(unrealizedPnlUsd)}`;
+      const unRateEl = document.getElementById('bal-unrealized-rate');
+      if (unRateEl) {
+        unRateEl.textContent = formatPct(unrealizedRate);
+        unRateEl.className = unrealizedRate >= 0 ? 'profit-positive' : 'profit-negative';
+      }
+
+      const elCashKrw = document.getElementById('bal-cash-krw');
+      if (elCashKrw) elCashKrw.textContent = formatKrw(cashKrw);
+      const elCashUsd = document.getElementById('bal-cash-usd');
+      if (elCashUsd) elCashUsd.textContent = formatUsd(cashUsd);
+
+      const elHoldingCount = document.getElementById('bal-holding-count');
+      if (elHoldingCount) elHoldingCount.textContent = `${positions.length}개 종목 보유`;
+      const tabBadge = document.getElementById('tab-balance-count-badge');
+      if (tabBadge) tabBadge.textContent = `${positions.length}종목`;
+
+      // 2. 종목 카드 그리드 및 테이블 렌더링
+      const cardsGrid = document.getElementById('balance-cards-grid');
+      const tableBody = document.getElementById('balance-table-tbody');
+      const emptyEl = document.getElementById('balance-empty-state');
+
+      if (!cardsGrid || !tableBody) return;
+
+      if (positions.length === 0) {
+        cardsGrid.innerHTML = '';
+        tableBody.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'block';
         return;
       }
-      emptyEl.style.display = 'none';
+      if (emptyEl) emptyEl.style.display = 'none';
 
-      container.innerHTML = tickers.map(t => {
-        const info = byTicker[t];
-        const stockName = info.stockName;
-        // 과거순으로 정렬 (매수 -> 매도 순으로 타임라인 출력)
-        const sortedLogs = [...info.logs].reverse();
+      // 카드 그리드 생성
+      cardsGrid.innerHTML = positions.map(p => {
+        const buyTotalUsd = (p.buyPrice || 0) * (p.quantity || 0);
+        const buyTotalKrw = buyTotalUsd * rate;
+        const curTotalUsd = (p.currentPrice || 0) * (p.quantity || 0);
+        const curTotalKrw = curTotalUsd * rate;
+        const pnlUsd = p.unrealizedPnl != null ? p.unrealizedPnl : (curTotalUsd - buyTotalUsd);
+        const pnlKrw = pnlUsd * rate;
+        const profitRate = p.profitRate || 0.0;
+        const pnlClass = profitRate >= 0 ? 'profit-positive' : 'profit-negative';
+        const pnlCardSign = profitRate >= 0 ? '+' : '';
 
-        let totalPnl = 0;
-        info.logs.forEach(l => {
-          if (l.action === 'SELL' && l.realizedPnl) {
-            totalPnl += l.realizedPnl;
-          }
-        });
-
-        const isHolding = !!info.activePosition;
-        const statusBadge = isHolding
-          ? `<span class="badge" style="background: rgba(16,185,129,0.18); color: #34d399; font-size: 11px;">📌 보유 중 (${info.activePosition.quantity}주 @ ${formatUsd(info.activePosition.buyPrice)})</span>`
-          : `<span class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-muted); font-size: 11px;">✅ 매매 청산 완료</span>`;
-
-        const stepsHtml = sortedLogs.map(l => {
-          const isBuy = l.action === 'BUY';
-          const isProfit = (l.realizedPnl || 0) >= 0;
-          const dotClass = isBuy ? 'dot-buy' : (isProfit ? 'dot-sell-profit' : 'dot-sell-loss');
-          const actionText = l.actionLabel || (isBuy ? '매수 체결' : '매도 체결');
-          const timeText = formatTimeKst(l.timestamp);
-          const pnlText = !isBuy
-            ? `<span class="${isProfit ? 'profit-positive' : 'profit-negative'}" style="margin-left: 6px;">[${formatPct(l.profitRate)} / ${formatUsd(l.realizedPnl)}]</span>`
-            : '';
-
-          return `
-            <div class="journey-event">
-              <div class="journey-dot ${dotClass}"></div>
-              <div class="journey-event-time">${timeText}</div>
-              <div class="journey-event-desc">
-                <span style="color: ${isBuy ? '#34d399' : (isProfit ? '#60a5fa' : '#f87171')};">
-                  ${isBuy ? '🟢' : (isProfit ? '🎯' : '🛡️')} ${actionText}
-                </span>
-                <span>${l.quantity}주 @ ${formatUsd(l.price)}</span>
-                ${pnlText}
-              </div>
-              <div class="journey-event-reason">${l.reason || ''}</div>
-            </div>
-          `;
-        }).join('');
-
-        const pnlSummaryClass = totalPnl >= 0 ? 'profit-positive' : 'profit-negative';
-        const pnlSign = totalPnl >= 0 ? '+' : '';
+        // 포트폴리오 비중
+        const weightPct = totalAssetUsd > 0 ? ((curTotalUsd / totalAssetUsd) * 100).toFixed(1) : '25.0';
 
         return `
-          <div class="ticker-journey-card">
-            <div class="journey-header">
-              <div class="journey-title">
-                <span class="ticker-badge" style="font-size: 12px;">${t}</span>
-                <span>${stockName}</span>
+          <div class="balance-stock-card">
+            <div class="balance-card-header">
+              <div class="balance-card-company">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="ticker-badge">${p.ticker}</span>
+                  <span style="font-size: 16px; font-weight: 700; color: #ffffff;">${getStockDisplayName(p.ticker, p.stockName)}</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+                  보유 수량: <strong style="color: #ffffff;">${p.quantity}주</strong> | 단가 ${formatUsd(p.currentPrice)}
+                </div>
               </div>
-              ${statusBadge}
+              <div class="balance-card-pnl">
+                <div class="${pnlClass}" style="font-family: var(--font-mono); font-size: 18px; font-weight: 800;">
+                  ${pnlCardSign}${formatPct(profitRate)}
+                </div>
+                <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
+                  ${pnlCardSign}${formatUsd(pnlUsd)} (${pnlCardSign}${formatKrw(pnlKrw)})
+                </div>
+              </div>
             </div>
-            <div class="journey-timeline">
-              ${stepsHtml || '<div style="font-size: 12px; color: var(--text-muted);">기록된 매매 이벤트가 없습니다.</div>'}
+
+            <div class="balance-card-body">
+              <div class="balance-row-item">
+                <span class="balance-row-label">투자 원금 (약 500만원 배정)</span>
+                <span class="balance-row-val">${formatKrw(buyTotalKrw)} <span style="font-size: 11px; color: var(--text-muted); font-weight: 400;">(${formatUsd(buyTotalUsd)})</span></span>
+              </div>
+              <div class="balance-row-item">
+                <span class="balance-row-label">현재 평가 금액</span>
+                <span class="balance-row-val ${pnlClass}">${formatKrw(curTotalKrw)} <span style="font-size: 11px; color: var(--text-muted); font-weight: 400;">(${formatUsd(curTotalUsd)})</span></span>
+              </div>
+              <div class="balance-row-item">
+                <span class="balance-row-label">매수 평단가</span>
+                <span class="balance-row-val">${formatUsd(p.buyPrice)}</span>
+              </div>
+              <div class="balance-row-item">
+                <span class="balance-row-label">실시간 현재가</span>
+                <span class="balance-row-val">${formatUsd(p.currentPrice)}</span>
+              </div>
+              <div class="balance-row-item">
+                <span class="balance-row-label">🎯 목표 익절선 (+3.0%)</span>
+                <span class="balance-row-val" style="color: var(--accent-green); font-size: 13px;">${formatUsd(p.takeProfitPrice)}</span>
+              </div>
+              <div class="balance-row-item">
+                <span class="balance-row-label">🛡️ 안전 손절선 (-6.5%)</span>
+                <span class="balance-row-val" style="color: var(--accent-red); font-size: 13px;">${formatUsd(p.stopLossPrice)}</span>
+              </div>
             </div>
-            <div class="journey-summary">
-              <span style="color: var(--text-muted);">종목 누적 실현손익</span>
-              <span class="${pnlSummaryClass}" style="font-weight: 700;">
-                ${pnlSign}${formatUsd(totalPnl)} (${pnlSign}${formatKrw(totalPnl * rate)})
-              </span>
+
+            <div class="balance-progress-box">
+              <div style="display: flex; justify-content: space-between; font-size: 11.5px;">
+                <span style="color: var(--text-muted);">총 포트폴리오 내 비중</span>
+                <span style="font-family: var(--font-mono); font-weight: 700; color: #67e8f9;">${weightPct}% (목표 25%)</span>
+              </div>
+              <div class="balance-progress-bar-bg">
+                <div class="balance-progress-fill" style="width: ${Math.min(100, weightPct * 3.5)}%;"></div>
+              </div>
+            </div>
+
+            <div class="balance-card-footer">
+              <span style="font-size: 11px; color: var(--text-muted);">15초 자동 감시 활성화</span>
+              <button class="btn-sell" style="padding: 6px 14px; font-size: 12px;" onclick="sellStock('${p.ticker}')">즉시 긴급 매도</button>
             </div>
           </div>
         `;
       }).join('');
+
+      // 상세 테이블 생성
+      tableBody.innerHTML = positions.map(p => {
+        const buyTotalUsd = (p.buyPrice || 0) * (p.quantity || 0);
+        const buyTotalKrw = buyTotalUsd * rate;
+        const curTotalUsd = (p.currentPrice || 0) * (p.quantity || 0);
+        const curTotalKrw = curTotalUsd * rate;
+        const pnlUsd = p.unrealizedPnl != null ? p.unrealizedPnl : (curTotalUsd - buyTotalUsd);
+        const pnlKrw = pnlUsd * rate;
+        const profitRate = p.profitRate || 0.0;
+        const pnlClass = profitRate >= 0 ? 'profit-positive' : 'profit-negative';
+        const pnlTableSign = profitRate >= 0 ? '+' : '';
+
+        return `
+          <tr>
+            <td>
+              <span class="ticker-badge">${p.ticker}</span>
+              <span class="company-name">${getStockDisplayName(p.ticker, p.stockName)}</span>
+            </td>
+            <td class="number-mono">${p.quantity}주</td>
+            <td class="number-mono">${formatUsd(p.buyPrice)}</td>
+            <td class="number-mono">${formatUsd(p.currentPrice)}</td>
+            <td class="number-mono">${formatKrw(buyTotalKrw)}</td>
+            <td class="number-mono">${formatKrw(curTotalKrw)}</td>
+            <td>
+              <span class="number-mono ${pnlClass}">${pnlTableSign}${formatKrw(pnlKrw)}</span>
+              <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${pnlTableSign}${formatUsd(pnlUsd)}</div>
+            </td>
+            <td>
+              <span class="number-mono ${pnlClass}" style="font-weight: 700;">${pnlTableSign}${formatPct(profitRate)}</span>
+            </td>
+            <td>
+              <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">익절: ${formatUsd(p.takeProfitPrice)}</div>
+              <div style="font-size: 11px; color: var(--accent-red); font-family: var(--font-mono);">손절: ${formatUsd(p.stopLossPrice)}</div>
+            </td>
+            <td>
+              <button class="btn-sell" onclick="sellStock('${p.ticker}')">긴급매도</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
-    // 탭 전환 함수 (5개 탭: realtime, briefing, logs, diary, earnings)
+    // 탭 전환 함수 (6개 탭: realtime, balance, briefing, logs, diary, earnings)
     let currentMainTab = 'realtime';
     function switchMainTab(tab) {
       currentMainTab = tab;
       const btnRealtime = document.getElementById('btn-tab-realtime');
+      const btnBalance = document.getElementById('btn-tab-balance');
       const btnBriefing = document.getElementById('btn-tab-briefing');
       const btnLogs = document.getElementById('btn-tab-logs');
       const btnDiary = document.getElementById('btn-tab-diary');
       const btnEarnings = document.getElementById('btn-tab-earnings');
 
       const paneRealtime = document.getElementById('tab-pane-realtime');
+      const paneBalance = document.getElementById('tab-pane-balance');
       const paneBriefing = document.getElementById('tab-pane-briefing');
       const paneLogs = document.getElementById('tab-pane-logs');
       const paneDiary = document.getElementById('tab-pane-diary');
       const paneEarnings = document.getElementById('tab-pane-earnings');
 
       if (btnRealtime) btnRealtime.classList.toggle('active', tab === 'realtime');
+      if (btnBalance) btnBalance.classList.toggle('active', tab === 'balance');
       if (btnBriefing) btnBriefing.classList.toggle('active', tab === 'briefing');
       if (btnLogs) btnLogs.classList.toggle('active', tab === 'logs');
       if (btnDiary) btnDiary.classList.toggle('active', tab === 'diary');
       if (btnEarnings) btnEarnings.classList.toggle('active', tab === 'earnings');
 
       if (paneRealtime) paneRealtime.style.display = (tab === 'realtime') ? 'block' : 'none';
+      if (paneBalance) paneBalance.style.display = (tab === 'balance') ? 'block' : 'none';
       if (paneBriefing) paneBriefing.style.display = (tab === 'briefing') ? 'block' : 'none';
       if (paneLogs) paneLogs.style.display = (tab === 'logs') ? 'block' : 'none';
       if (paneDiary) paneDiary.style.display = (tab === 'diary') ? 'block' : 'none';
       if (paneEarnings) paneEarnings.style.display = (tab === 'earnings') ? 'block' : 'none';
 
-      if (tab === 'briefing') {
+      if (tab === 'balance' && window.lastDashboardData) {
+        renderBalanceTab(window.lastDashboardData);
+      } else if (tab === 'briefing') {
         fetchBriefings();
       } else if (tab === 'logs') {
         loadAnalysisLogs();
@@ -2526,11 +2905,11 @@
 
     // 포트폴리오 전체 데이터 초기화 함수
     async function resetPortfolioData() {
-      if (!confirm("⚠️ 주의: 가상 포트폴리오의 모든 보유 종목과 매매 일지를 초기화하고, 초기 자본 ₩10,000,000 ($7,407.41)으로 원상 복구하시겠습니까?")) return;
+      if (!confirm("⚠️ 주의: 가상 포트폴리오의 모든 보유 종목과 매매 일지를 초기화하고, 초기 자본 ₩20,000,000 ($14,814.81)으로 원상 복구하시겠습니까?")) return;
       try {
         const res = await fetch('/api/portfolio/reset', { method: 'POST' });
         const result = await res.json();
-        alert(result.message || '포트폴리오가 ₩10,000,000으로 초기화되었습니다.');
+        alert(result.message || '포트폴리오가 ₩20,000,000으로 초기화되었습니다.');
         fetchDashboard();
         if (currentMainTab === 'chart') {
           loadStockChart(currentChartTicker, currentChartRange);

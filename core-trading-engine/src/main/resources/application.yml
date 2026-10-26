@@ -22,7 +22,7 @@ trading:
   simulation-mode: ${SIMULATION_MODE:true}
   default-quantity: 1 # 비중 정보가 없을 때의 최소 매수 수량 (주)
   initial-capital-krw: 20000000 # 초기 가상 시드 머니 (2,000만원)
-  max-position-pct: 15.0 # 종목당 최대 투자 비중 (총자산 대비 %)
+  max-position-pct: 26.0 # 종목당 최대 투자 비중 (2,000만원 중 약 500만원 = 25%)
   min-cash-reserve-pct: 10.0 # 항상 남겨둘 최소 현금 비중 (%)
   usd-krw-rate: 1350.0 # 환율
   take-profit-ratio: 0.03 # 목표 익절선 (+3.0%)

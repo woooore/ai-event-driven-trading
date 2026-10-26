@@ -188,20 +188,21 @@ public class KisOrderService {
         if (signal.getPositionSizePct() != null && signal.getPositionSizePct() > 0) {
             pct = signal.getPositionSizePct();
         } else {
-            double conf = signal.getConfidence() != null ? signal.getConfidence() : 0.7;
-            pct = conf >= 0.90 ? 12.0 : (conf >= 0.80 ? 8.0 : 5.0);
+            pct = 25.0; // 기본 500만원 배정 (2,000만원 기준 25%)
         }
-        pct = Math.max(2.0, Math.min(pct, maxPositionPct));
+        pct = Math.max(5.0, Math.min(pct, maxPositionPct));
 
-        double budget = equity * pct / 100.0;
+        // 종목당 약 500만원(₩5,000,000, 약 $3,703.7) 목표 예산 설정
+        double targetBudgetUsd = 5000000.0 / portfolioManager.getUsdKrwRate();
+        double budget = Math.max(equity * pct / 100.0, targetBudgetUsd);
 
         // 종목당 최대 비중 초과 방지 (이미 보유 중이면 잔여 한도만)
         double existingValue = portfolioManager.getPositionValueUsd(ticker);
         double capRemaining = (equity * maxPositionPct / 100.0) - existingValue;
         budget = Math.min(budget, capRemaining);
 
-        // 현금 최소 보유 비율 유지
-        double spendable = cash - (equity * minCashReservePct / 100.0);
+        // 현금 가용 범위 내로 제한 (최소 5% 버퍼 유지)
+        double spendable = cash * 0.95;
         budget = Math.min(budget, spendable);
 
         if (budget < price) {
@@ -209,8 +210,11 @@ public class KisOrderService {
         }
 
         int qty = (int) Math.floor(budget / price);
-        log.info(">> [비중 매수 산정] {} 권장비중 {}% -> 예산 ${} -> {}주 (총자산 ${}, 현금 ${})",
-                ticker, String.format(Locale.US, "%.1f", pct), String.format(Locale.US, "%.2f", budget), qty,
+        qty = Math.max(1, qty); // 1주 가격이 예산 내이면 최소 1주 이상 매수
+        log.info(">> [500만원 집중 매수 산정] {} 비중 {}% -> 예산 ${} (₩약 {:,}원) -> {}주 매수 (단가 ${}, 총자산 ${}, 가용현금 ${})",
+                ticker, String.format(Locale.US, "%.1f", pct),
+                String.format(Locale.US, "%.2f", budget), (long)(budget * portfolioManager.getUsdKrwRate()),
+                qty, String.format(Locale.US, "%.2f", price),
                 String.format(Locale.US, "%.2f", equity), String.format(Locale.US, "%.2f", cash));
         return qty;
     }

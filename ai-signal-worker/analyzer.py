@@ -254,11 +254,29 @@ def calculate_quant_indicators(hist) -> dict:
         else:
             score -= 8  # 하락 모멘텀
 
+        # 6. 연속 하락 일수 (최근 N일 연속 음봉 또는 종가 하락) 및 눌림폭 (Pullback)
+        down_days = 0
+        for i in range(len(closes) - 1, 0, -1):
+            if closes[i] <= closes[i - 1]:
+                down_days += 1
+            else:
+                break
+
+        recent_window = min(5, len(highs))
+        recent_high = max(highs[-recent_window:]) if recent_window > 0 else current_price
+        pullback_pct = round(((current_price - recent_high) / recent_high) * 100.0, 1) if recent_high > 0 else 0.0
+
         # 이격도 기여도
         if 97.0 <= disparity <= 104.0:
             score += 10 # 20일선 안착
         elif disparity > 108.0:
             score -= 15 # 단기 급등 과열
+
+        # 연속 하락(눌림목/낙폭과대) 가산점
+        if down_days >= 2:
+            score += 15 # 며칠 연속 하락 눌림목 형성 (반등 매수 찬스)
+        elif pullback_pct <= -3.5:
+            score += 10 # 단기 고점 대비 -3.5% 이상 건강한 조정
 
         final_quant_score = max(0, min(100, score))
 
@@ -271,6 +289,8 @@ def calculate_quant_indicators(hist) -> dict:
             'is_golden_cross': is_golden_cross,
             'atr': atr,
             'atr_pct': atr_pct,
+            'consecutive_down_days': down_days,
+            'pullback_pct': pullback_pct,
             'quant_score': final_quant_score,
             'dynamic_take_profit': dynamic_tp,
             'dynamic_stop_loss': dynamic_sl
@@ -293,12 +313,15 @@ class StockSignal(BaseModel):
     reason: str = Field(description="AI의 핵심 투자 논거 및 매매 근거 요약 (1~2문장)")
     news_impact_score: int = Field(default=50, description="뉴스 촉매의 실질적 영향력 점수 (0~100점). 단순 소음/의견은 40점 이하, 확실한 실적/수주 팩트는 70점 이상")
     priced_in_risk: str = Field(default="LOW", description="선반영(Priced-in) 및 '뉴스에 팔아라' 위험도: LOW, MEDIUM, HIGH 중 하나")
-    position_size_pct: float = Field(default=5.0, description="총자산(2,000만원) 대비 권장 매수 비중 (%단위, 3.0 ~ 15.0%). 확신도와 뉴스 영향도, 변동성에 따라 결정")
+    position_size_pct: float = Field(default=25.0, description="총자산(2,000만원) 대비 500만원 배정을 위한 권장 비중 (%단위, 기본 25.0%)")
     rsi: Optional[float] = Field(default=None, description="14일 상대강도지수 (RSI)")
     ma_disparity: Optional[float] = Field(default=None, description="20일 이동평균선 이격도 (%)")
     bollinger_b: Optional[float] = Field(default=None, description="볼린저 밴드 %B (0.0~1.0)")
     macd_hist: Optional[float] = Field(default=None, description="MACD 오실레이터 히스토그램")
     atr_pct: Optional[float] = Field(default=None, description="14일 ATR 변동성 비율 (%)")
+    pe_ratio: Optional[float] = Field(default=None, description="주가수익비율 (PER)")
+    consecutive_down_days: Optional[int] = Field(default=0, description="최근 연속 하락 일수")
+    pullback_pct: Optional[float] = Field(default=0.0, description="최근 고점 대비 눌림폭 (%)")
     quant_score: Optional[int] = Field(default=None, description="종합 퀀트 알파 스코어 (0~100점)")
 
 # 5-2. 1시간 단위 AI 글로벌 시장 브리핑 Pydantic 스키마
@@ -524,6 +547,22 @@ def get_market_and_news(ticker: str, custom_news_list: Optional[List[dict]] = No
         if not quant_info:
             quant_info = calculate_quant_indicators(hist)
 
+        pe_ratio = None
+        try:
+            fast_info = getattr(t, 'fast_info', None)
+            if fast_info and hasattr(fast_info, 'pe_ratio'):
+                pe_ratio = getattr(fast_info, 'pe_ratio', None)
+            if not pe_ratio:
+                t_info = getattr(t, 'info', {})
+                pe_ratio = t_info.get('trailingPE') or t_info.get('forwardPE')
+            if pe_ratio:
+                pe_ratio = round(float(pe_ratio), 1)
+        except Exception:
+            pe_ratio = None
+
+        if quant_info:
+            quant_info['pe_ratio'] = pe_ratio
+
         pct_change = 0.0
         if current_price and prev_close and prev_close > 0:
             pct_change = round(((current_price - prev_close) / prev_close) * 100, 2)
@@ -546,6 +585,7 @@ def get_market_and_news(ticker: str, custom_news_list: Optional[List[dict]] = No
             'ticker': ticker,
             'current_price': round(current_price, 2) if current_price else 100.0,
             'pct_change': pct_change,
+            'pe_ratio': pe_ratio,
             'quant': quant_info,
             'news': news_items
         }
@@ -558,6 +598,7 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
     ticker = market_data['ticker']
     current_price = market_data['current_price']
     pct_change = market_data['pct_change']
+    pe_ratio = market_data.get('pe_ratio')
     quant = market_data.get('quant', {})
     news_items = market_data['news']
 
@@ -571,6 +612,8 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
     is_golden_cross = quant.get('is_golden_cross', False)
     atr = quant.get('atr', round(current_price * 0.02, 2))
     atr_pct = quant.get('atr_pct', 2.0)
+    down_days = quant.get('consecutive_down_days', 0)
+    pullback_pct = quant.get('pullback_pct', 0.0)
     quant_score = quant.get('quant_score', 55)
     dynamic_tp = quant.get('dynamic_take_profit', round(current_price * 1.03, 2))
     dynamic_sl = quant.get('dynamic_stop_loss', round(current_price * 0.935, 2))
@@ -606,48 +649,51 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
                 f"  ★ 핵심 교훈: {j.get('lesson_learned')}\n"
             )
         rag_section += (
-            "=> [RAG 교훈 적용 지침]: 과거 손실은 주로 '당일 주가가 이미 +4.5% 이상 폭등했을 때 추격 매수'했거나 '단순 악재'를 간과했기 때문임.\n"
-            "   당일 주가 변동률이 완만하고(+3.0% 미만) RSI(65 미만)가 안정권이라면, 과거 손실에 위축되어 무조건 HOLD하지 말고 소액 정찰대(3.0~5.0%) 분할 매수로 진입하라.\n"
+            "=> [RAG 교훈 적용 지침]: 당일 주가가 이미 +4.0% 이상 폭등했을 때는 추격 매수 금지.\n"
+            "   충분히 하락한 눌림목에서 분할 매수로 진입하라.\n"
         )
 
     # 퀀트 기술적 지표 진단 요약
+    pe_str = f"{pe_ratio:.1f}배 (동종업계 대비 양호)" if pe_ratio else "N/A (성장주/적정 추정)"
+    down_days_str = f"최근 {down_days}일 연속 하락 (단기 눌림목/낙폭과대)" if down_days >= 2 else (f"최근 고점 대비 {pullback_pct:.1f}% 조정" if pullback_pct <= -2.5 else "단기 횡보/보합")
     quant_summary = (
         f"1. 14일 RSI: {rsi:.1f} ({'⚠️ 과매수 위험' if rsi >= 70 else ('💎 과매도 저평가' if rsi <= 35 else '안정권')})\n"
         f"2. 20일 MA 이격도: {ma_disparity:.1f}%\n"
         f"3. 20일 볼린저 밴드 %B: {bollinger_b:.2f} ({'하단 밴드 지지 반등권' if bollinger_b <= 0.35 else ('상단 밴드 과열' if bollinger_b >= 0.95 else '중심 안정권')})\n"
         f"4. MACD 모멘텀: {macd_hist:+.2f} ({'★ 골든크로스 상승 전환 신호!' if is_golden_cross else ('상승 모멘텀 지속' if macd_hist > 0 else '하락 추세')})\n"
-        f"5. ATR 일일 정상 변동폭: ${atr:.2f} (약 {atr_pct:.1f}%)\n"
-        f"6. 종합 퀀트 알파 스코어: {quant_score} / 100점 ({'💎 강력 매수 적격권 (75점 이상)' if quant_score >= 75 else ('안정 관망권' if quant_score >= 55 else '⚠️ 리스크 주의권')})"
+        f"5. 차트/눌림목 상태: {down_days_str} (최근 고점 대비: {pullback_pct:+.1f}%)\n"
+        f"6. 밸류에이션(P/E): {pe_str}\n"
+        f"7. ATR 일일 정상 변동폭: ${atr:.2f} (약 {atr_pct:.1f}%)\n"
+        f"8. 종합 퀀트 알파 스코어: {quant_score} / 100점 ({'💎 강력 매수 적격권 (75점 이상)' if quant_score >= 75 else ('안정 관망권' if quant_score >= 55 else '⚠️ 리스크 주의권')})"
     )
 
     system_prompt = (
         "너는 미국 월스트리트 최상위 헤지펀드의 시니어 이벤트 드리븐(Event-Driven) & 퀀트(Quant) 트레이더다.\n"
-        "주어진 미국 주식의 현재가, 당일 변동률, 종합 퀀트 지표(RSI, 볼린저 밴드 %B, MACD, ATR, 퀀트 스코어), 과거 매매 일지(RAG), 그리고 최신 뉴스를 종합 분석하여 트레이딩 결정을 내려라.\n\n"
-        "【핵심 철학: 모든 뉴스에 100% 완벽한 호재는 없다 - 퀀트 랭킹 & 분할 매수 실행】:\n"
-        "- 시장에 100% 확실하고 리스크 없는 호재는 존재하지 않는다. 모든 것을 '선반영'이나 '불확실성' 핑계로 HOLD(관망)만 하면 계좌가 굴러가지 않는다.\n"
-        "- 우리 시스템에는 엄격한 ATR 기반 동적 손절가(stop_loss, -3~5% 내외)와 익절가(take_profit, +3~6% 내외) 안전장치가 이미 완벽히 구축되어 있다. 리스크를 두려워하지 말고 원칙에 따라 적극적으로 기회를 잡아라!\n\n"
-        "【BUY(매수) 진입 허용 2대 트랙】:\n"
-        "1. [트랙 A: 팩트 호재 모멘텀 매수 (Event-Driven)]\n"
-        "   - 실적 호조, EPS/매출 가이던스 상향, 대형 수주/공급 계약, 신제품/AI 신기술 출시 등 긍정적 팩트가 있는 경우.\n"
-        "   - 당일 주가가 +4.0% 미만으로 아직 폭등하지 않았다면 적극 매수 (action='BUY', confidence: 0.70~0.85, position_size_pct: 5.0~8.0%).\n"
-        "2. [트랙 B: 퀀트 저평가/눌림목 정찰대 매수 (Quant Value & Mean-Reversion)]\n"
-        "   - 뉴스가 대박 호재가 아니더라도(단순 신제품, 파트너십, 시장 분석 등 50~60점 일반 뉴스), 치명적 악재(소송, 분식회계, 규제 제재)가 없고\n"
-        "   - 퀀트 알파 스코어 >= 55점 AND RSI가 30~55 안정/과매도 구간이며 볼린저 밴드 중심/하단권인 경우\n"
-        "   - ➔ 적극적으로 1차 소액 정찰대 분할 매수 (action='BUY', confidence: 0.65~0.75, position_size_pct: 3.0~4.5%)를 실행하라!\n\n"
-        "【필수 매매 규칙 & 위험 방어 원칙】:\n"
-        "1. [선반영(Priced-in) 평가]:\n"
-        "   - 당일 주가가 이미 +4.0% 이상 급등했을 때만 priced_in_risk='HIGH'로 지정하고 HOLD하라.\n"
-        "   - 주가가 -2%~+2% 사이로 완만하거나 눌려있다면 priced_in_risk='LOW' 또는 'MEDIUM'으로 평가하고 매수를 주저하지 말라.\n"
-        "2. [기술적 과매수 기준]:\n"
-        "   - RSI(14)가 76.0 이상인 극단적 과열 구간이거나 볼린저 상단 완전 이탈(%B >= 1.05) 시에만 HOLD하라.\n"
-        "3. [악재 감지 시 즉시 긴급 탈출 SELL]:\n"
-        "   - 대규모 소송 패소, 회계 부정, 실적 쇼크, 규제 제재 시 즉시 action='SELL', confidence >= 0.75로 전량 탈출하라.\n"
-        "4. BUY 결정 시 가격 기준:\n"
+        "주어진 미국 주식의 현재가, 당일 변동률, 종합 퀀트 지표(RSI, 볼린저 밴드 %B, MACD, ATR, 퀀트 스코어, 연속 하락 일수, P/E), 과거 매매 일지(RAG), 그리고 최신 뉴스를 종합 분석하여 트레이딩 결정을 내려라.\n\n"
+        "【핵심 철학: S&P500 분산 펀드식 1~2주 매수 절대 금지 - 종목당 약 500만원(25.0%) 엄선 집중 투자】:\n"
+        "- 시장의 모든 종목을 1~2주씩 잡다하게 다 사는 것은 최악의 전략이다! 총 자본 2,000만원 중 확실한 3~4개 기회 종목에 각각 약 500만원(비중 25.0%)씩 엄선해서 매수해야 한다.\n"
+        "- '차트상 며칠 연속 하락(눌림목/낙폭과대) + 실적/P/E 양호 + 치명적 악재 없음'을 동시에 충족하는 종목을 정밀 타격하라!\n\n"
+        "【BUY(매수) 진입 허용 2대 엄선 트랙 (해당 없으면 무조건 HOLD)】:\n"
+        "1. [트랙 A: 며칠 연속 하락 눌림목 + 양호한 펀더멘털/저PER + 악재 없음 (최우선 추천)]\n"
+        "   - 기술적 차트: 최근 2일 이상 연속 하락(consecutive_down_days >= 2)했거나 최근 고점 대비 -2.5% 이상 눌린 상태(pullback_pct <= -2.5%).\n"
+        "   - 밸류에이션 & 실적: PER(P/E)이 40 이하로 적정/저평가 수준이거나 우량 실적을 유지하고 있는 기업.\n"
+        "   - 악재 유무: 최근 뉴스 피드에 분식회계, 소송 패소, 가이던스 폭락, 대형 규제 제재 등 구조적 치명적 악재가 전혀 없음 (뉴스 센티먼트 NEUTRAL 또는 POSITIVE).\n"
+        "   - RSI가 25~55 안정/과매도 반등 지지 구간.\n"
+        "   ➔ 이 조건을 만족하면 적극 매수! (action='BUY', confidence: 0.72~0.88, position_size_pct: 25.0%).\n"
+        "2. [트랙 B: 강력한 어닝 서프라이즈 모멘텀 매수 (PEAD)]\n"
+        "   - EPS/매출 호실적 서프라이즈 및 가이던스 상향 팩트 확인 + 당일 주가가 +4.0% 미만으로 아직 폭등하지 않음.\n"
+        "   ➔ 적극 매수! (action='BUY', confidence: 0.75~0.88, position_size_pct: 25.0%).\n\n"
+        "【HOLD 필수 원칙】:\n"
+        "- 최근 연속 하락도 아니고(consecutive_down_days < 2), 그렇다고 대박 어닝 서프라이즈도 없는 평범한 종목은 무조건 action='HOLD'하라! 아무 종목이나 사지 마라.\n"
+        "- 당일 주가가 이미 +4.0% 이상 급등했거나 RSI가 70 이상 과열된 종목은 무조건 action='HOLD'하라.\n\n"
+        "【악재 감지 시 긴급 탈출 SELL】:\n"
+        "- 대규모 소송 패소, 회계 부정, 실적 쇼크, 규제 제재 시 즉시 action='SELL', confidence >= 0.75로 전량 탈출하라.\n\n"
+        "【BUY 결정 시 가격 기준】:\n"
         f"   - order_price: 현재 시장 가격 (${current_price}) 기준\n"
         f"   - take_profit: ATR 변동성 기반 동적 익절가 (${dynamic_tp})\n"
         f"   - stop_loss: ATR 변동성 기반 동적 손절가 (${dynamic_sl})\n"
         f"   - exchange: '{exchange}'\n"
-        "5. reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 뉴스 팩트, 퀀트/선반영 상태를 함께 언급하여 작성하라."
+        "   - reason(투자 근거): 반드시 자연스러운 한국어로 1~2문장으로 '연속 하락 일수, PER 밸류, 악재 부재 및 반등 기대'를 명확히 명시하라."
     )
 
     user_prompt = f"""
@@ -680,44 +726,52 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         signal.macd_hist = macd_hist
         signal.atr_pct = atr_pct
         signal.quant_score = quant_score
-
-        # 1차: 뉴스 팩트 촉매 및 선반영 하드 안전장치
+        signal.pe_ratio = pe_ratio
+        signal.consecutive_down_days = down_days
+        signal.pullback_pct = pullback_pct
         if signal.action == "BUY":
-            # 1. 뉴스 촉매 강도 검증: 퀀트 점수가 55점 이상이고 치명적 악재가 없다면 뉴스점수 50점 이상도 정찰대 매수 허용
-            if signal.news_impact_score is not None and signal.news_impact_score < 50:
-                log_ts(f"   🛡️ [뉴스 영향도 미달 차단] {ticker} 뉴스 영향도({signal.news_impact_score}점) < 50! -> HOLD 전환")
+            signal.position_size_pct = 25.0 # 종목당 약 500만원 고정 배정
+
+        # 1차: 엄선 매수 하드 안전장치 (잡다한 분산 매수 완전 차단)
+        if signal.action == "BUY":
+            # 1. 차트 눌림목도 아니고(하락일수 < 2 & 조정폭 > -2.0%) 강력한 실적 호재(뉴스점수 >= 75)도 아니면 HOLD 강제 전환!
+            is_pullback = (down_days >= 2) or (pullback_pct <= -2.5) or (rsi <= 45.0)
+            is_big_catalyst = (signal.news_impact_score is not None and signal.news_impact_score >= 75)
+
+            if not is_pullback and not is_big_catalyst:
+                log_ts(f"   🛡️ [엄선 매수 원칙 적용] {ticker} 연속 하락({down_days}일) 및 눌림폭({pullback_pct}%) 미흡 -> 무차별 매수 방지 HOLD 전환")
+                signal.action = "HOLD"
+                signal.confidence = min(signal.confidence, 0.45)
+                signal.position_size_pct = 0.0
+                signal.reason = f"[엄선 매수 필터] 차트상 연속 하락 눌림목이나 대형 실적 촉매가 없어 분산 매수 방지를 위해 관망 유지. {signal.reason}"
+
+            # 2. 뉴스 촉매 강도 검증: 치명적 악재가 있을 때 차단
+            elif signal.news_impact_score is not None and signal.news_impact_score < 40:
+                log_ts(f"   🛡️ [뉴스 영향도 미달 차단] {ticker} 뉴스 영향도({signal.news_impact_score}점) < 40! -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
                 signal.reason = f"[뉴스 영향도 부족] 뉴스 점수 {signal.news_impact_score}점으로 촉매 부족. {signal.reason}"
 
-            # 2. 선반영(Priced-in) 차단: 주가가 실제로 당일 +4.0% 이상 폭등했을 때만 차익실현 매물받이로 차단!
-            elif (signal.priced_in_risk == "HIGH" and pct_change >= 4.0) or (signal.priced_in_risk == "MEDIUM" and pct_change >= 4.5):
-                log_ts(f"   🛡️ [선반영(Priced-in) 차단] {ticker} 선반영 위험({signal.priced_in_risk}, 변동률 {pct_change:+}%). 차익실현 매물받이 방지 -> HOLD 전환")
+            # 3. 선반영(Priced-in) 차단: 주가가 실제로 당일 +4.0% 이상 폭등했을 때만 차익실현 매물받이로 차단!
+            elif pct_change >= 4.0:
+                log_ts(f"   🛡️ [당일 급등 추격매수 차단] {ticker} 변동률 {pct_change:+}%로 이미 급등. 고점 차익실현 위험 -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
-                signal.reason = f"[선반영 위험 차단] 호재가 주가에 이미 선반영되었거나 당일 급등({pct_change:+}%)으로 차익실현 위험. {signal.reason}"
+                signal.reason = f"[당일 급등 추격매수 방지] 당일 주가가 {pct_change:+}% 급등하여 눌림목이 아님. {signal.reason}"
 
-            # 3. 기술적 극단 과매수 차단 (76 이상)
-            elif rsi is not None and rsi >= 76.0:
-                log_ts(f"   🛡️ [기술적 과매수 차단] {ticker} RSI({rsi:.1f}) >= 76 극단 과열! -> HOLD 전환")
+            # 4. 기술적 극단 과매수 차단 (70 이상)
+            elif rsi is not None and rsi >= 70.0:
+                log_ts(f"   🛡️ [기술적 과매수 차단] {ticker} RSI({rsi:.1f}) >= 70 과열! -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
-                signal.reason = f"[기술적 과매수 차단] RSI({rsi:.1f})가 76 이상 극단적 과열 상태로 단기 고점 세력 차익실현 덤핑 위험. {signal.reason}"
+                signal.reason = f"[기술적 과매수 차단] RSI({rsi:.1f})가 70 이상 과열 상태로 단기 고점 조정 위험. {signal.reason}"
 
-            # 4. 볼린저 상단 이탈 과열 차단 (%B >= 1.05)
-            elif bollinger_b is not None and bollinger_b >= 1.05:
-                log_ts(f"   🛡️ [볼린저 상단 과열 차단] {ticker} 볼린저 밴드 상단 이탈(%B={bollinger_b}) 과열! -> HOLD 전환")
-                signal.action = "HOLD"
-                signal.confidence = min(signal.confidence, 0.45)
-                signal.position_size_pct = 0.0
-                signal.reason = f"[볼린저 밴드 상단 과열 차단] 주가가 볼린저 상단을 크게 돌파(%B {bollinger_b})하여 조정 압력 우려. {signal.reason}"
-
-            # 5. 퀀트 스코어 미달 차단 (40점 미만일 때만 차단)
-            elif quant_score < 40:
-                log_ts(f"   🛡️ [퀀트 알파 스코어 차단] {ticker} 퀀트 점수({quant_score}점) 저조로 HOLD 전환")
+            # 5. 퀀트 스코어 미달 차단 (50점 미만일 때만 차단)
+            elif quant_score < 50:
+                log_ts(f"   🛡️ [퀀트 알파 스코어 차단] {ticker} 퀀트 점수({quant_score}점) 미달로 HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
@@ -881,7 +935,10 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
             "rsi": signal.rsi,
             "ma_disparity": signal.ma_disparity,
             "bollinger_b": signal.bollinger_b,
-            "quant_score": signal.quant_score
+            "quant_score": signal.quant_score,
+            "pe_ratio": signal.pe_ratio,
+            "consecutive_down_days": signal.consecutive_down_days,
+            "pullback_pct": signal.pullback_pct
         }
         # 1. Kafka 전송 우선 시도 (실패 시에만 HTTP fallback 전송하여 중복 방지)
         try:
@@ -996,7 +1053,10 @@ def scan_market_wide_news(batch_size: int = 10):
                     "rsi": signal.rsi,
                     "ma_disparity": signal.ma_disparity,
                     "bollinger_b": signal.bollinger_b,
-                    "quant_score": signal.quant_score
+                    "quant_score": signal.quant_score,
+                    "pe_ratio": signal.pe_ratio,
+                    "consecutive_down_days": signal.consecutive_down_days,
+                    "pullback_pct": signal.pullback_pct
                 }
                 # 1. Kafka 전송 우선 시도 (실패 시에만 HTTP fallback 전송하여 중복 방지)
                 try:

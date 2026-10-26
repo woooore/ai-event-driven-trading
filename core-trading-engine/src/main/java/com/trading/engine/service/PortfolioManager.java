@@ -32,6 +32,7 @@ public class PortfolioManager {
     @Value("${trading.initial-capital-krw:20000000}")
     private double initialCapitalKrw;
 
+    @Getter
     @Value("${trading.usd-krw-rate:1350.0}")
     private double usdKrwRate;
 
