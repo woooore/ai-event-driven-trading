@@ -36,12 +36,13 @@ BASE_TOP100_MASTER: Dict[str, Dict[str, str]] = {
     "HD": {"name": "홈디포 (Home Depot)", "keywords": ["home depot", "hd"], "exchange": "NYSE", "rank": 19},
     "PG": {"name": "프록터 앤 갬블 (P&G)", "keywords": ["procter & gamble", "pg"], "exchange": "NYSE", "rank": 20},
 
-    # ── [필수소비 / 헬스케어 / 에너지 Top 21-30] ──
-    "JNJ": {"name": "존슨앤드존슨 (J&J)", "keywords": ["johnson & johnson", "jnj"], "exchange": "NYSE", "rank": 21},
-    "NFLX": {"name": "넷플릭스 (Netflix)", "keywords": ["netflix", "nflx", "squid game"], "exchange": "NASD", "rank": 22},
-    "BAC": {"name": "뱅크오브아메리카 (BofA)", "keywords": ["bank of america", "bac"], "exchange": "NYSE", "rank": 23},
-    "CRM": {"name": "세일즈포스 (Salesforce)", "keywords": ["salesforce", "crm", "agentforce"], "exchange": "NYSE", "rank": 24},
-    "ABBV": {"name": "애브비 (AbbVie)", "keywords": ["abbvie", "abbv", "humira"], "exchange": "NYSE", "rank": 25},
+    # ── [필수소비 / 헬스케어 / 에너지 / 우주항공 Top 21-30] ──
+    "SPCX": {"name": "스페이스X (SpaceX)", "keywords": ["spacex", "spcx", "elon musk", "starlink", "starship", "apollo", "gpu"], "exchange": "NASD", "rank": 21},
+    "JNJ": {"name": "존슨앤드존슨 (J&J)", "keywords": ["johnson & johnson", "jnj"], "exchange": "NYSE", "rank": 22},
+    "NFLX": {"name": "넷플릭스 (Netflix)", "keywords": ["netflix", "nflx", "squid game"], "exchange": "NASD", "rank": 23},
+    "BAC": {"name": "뱅크오브아메리카 (BofA)", "keywords": ["bank of america", "bac"], "exchange": "NYSE", "rank": 24},
+    "CRM": {"name": "세일즈포스 (Salesforce)", "keywords": ["salesforce", "crm", "agentforce"], "exchange": "NYSE", "rank": 25},
+    "ABBV": {"name": "애브비 (AbbVie)", "keywords": ["abbvie", "abbv", "humira"], "exchange": "NYSE", "rank": 26},
     "CVX": {"name": "셰브론 (Chevron)", "keywords": ["chevron", "cvx"], "exchange": "NYSE", "rank": 26},
     "KO": {"name": "코카콜라 (Coca-Cola)", "keywords": ["coca-cola", "coke"], "exchange": "NYSE", "rank": 27},
     "MRK": {"name": "머크 (Merck)", "keywords": ["merck", "mrk", "keytruda"], "exchange": "NYSE", "rank": 28},
@@ -126,9 +127,8 @@ BASE_TOP100_MASTER: Dict[str, Dict[str, str]] = {
     "MO": {"name": "알트리아 (Altria)", "keywords": ["altria", "mo"], "exchange": "NYSE", "rank": 93},
     "SO": {"name": "서던 컴퍼니 (Southern)", "keywords": ["southern company", "so"], "exchange": "NYSE", "rank": 94},
     "CRWD": {"name": "크라우드스트라이크 (CrowdStrike)", "keywords": ["crowdstrike", "crwd"], "exchange": "NASD", "rank": 95},
-    "BMY": {"name": "브리스톨 마이어스 (Bristol Myers)", "keywords": ["bristol myers", "bmy"], "exchange": "NYSE", "rank": 96},
-    "GILD": {"name": "길리어드 사이언스 (Gilead)", "keywords": ["gilead", "gild"], "exchange": "NASD", "rank": 97},
-    "ZTS": {"name": "조에티스 (Zoetis)", "keywords": ["zoetis", "zts"], "exchange": "NYSE", "rank": 98},
+    "BMY": {"name": "브리스톨 마이어스 (Bristol Myers)", "keywords": ["bristol myers", "bmy"], "exchange": "NYSE", "rank": 97},
+    "GILD": {"name": "길리어드 사이언스 (Gilead)", "keywords": ["gilead", "gild"], "exchange": "NASD", "rank": 98},
     "SMCI": {"name": "슈퍼마이크로 (Supermicro)", "keywords": ["supermicro", "smci"], "exchange": "NASD", "rank": 99},
     "TSM": {"name": "TSMC (대만반도체 ADR)", "keywords": ["tsmc", "tsm", "foundry"], "exchange": "NYSE", "rank": 100}
 }

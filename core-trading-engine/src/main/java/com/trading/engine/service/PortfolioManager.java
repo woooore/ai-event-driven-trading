@@ -68,6 +68,7 @@ public class PortfolioManager {
             Map.entry("GOOGL", "알파벳 구글 (Alphabet)"),
             Map.entry("META", "메타 (Meta)"),
             Map.entry("TSLA", "테슬라 (Tesla)"),
+            Map.entry("SPCX", "스페이스X (SpaceX)"),
             Map.entry("LLY", "일라이 릴리 (Eli Lilly)"),
             Map.entry("AVGO", "브로드컴 (Broadcom)"),
             Map.entry("AMD", "AMD (어드밴스드 마이크로)"),
