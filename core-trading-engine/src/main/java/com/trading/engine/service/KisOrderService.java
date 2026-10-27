@@ -102,8 +102,42 @@ public class KisOrderService {
         } else {
             qty = calculateBuyQuantity(signal, ticker, price);
             if (qty <= 0) {
-                log.warn(">> [매수 스킵] {} 비중 한도/현금 보유 비율 제약으로 매수 수량이 0주입니다.", ticker);
-                return;
+                // [자본 회전 교체 매매 (Capital Rotation / Swap Buy) 로직 발동 검사]
+                // 1) 신규 종목이 확실한 매수 적격 (확신도 >= 0.70 또는 뉴스점수 >= 70 또는 퀀트점수 >= 70)
+                // 2) 이미 해당 종목을 보유하고 있지 않음
+                // 3) 현금 부족으로 1주도 살 수 없는 상태 (2,000만원 한도 4종목 포화)
+                boolean isHighQuality = (signal.getConfidence() != null && signal.getConfidence() >= 0.70)
+                        || (signal.getNewsImpactScore() != null && signal.getNewsImpactScore() >= 70)
+                        || (signal.getQuantScore() != null && signal.getQuantScore() >= 70);
+
+                if (isHighQuality && !portfolioManager.hasPosition(ticker) && portfolioManager.getAllPositions().size() >= 3) {
+                    com.trading.engine.dto.Position swapTarget = portfolioManager.findWorstPerformingPositionForSwap();
+                    if (swapTarget != null) {
+                        double targetPrice = swapTarget.getCurrentPrice() > 0 ? swapTarget.getCurrentPrice() : swapTarget.getBuyPrice();
+                        double targetProfitRate = ((targetPrice - swapTarget.getBuyPrice()) / swapTarget.getBuyPrice()) * 100.0;
+                        String swapSellReason = String.format(Locale.US,
+                                "[자본 회전 교체 매도] 신규 유망주 %s(확신도 %.0f%%) 매수 자금 확보를 위해 부진 종목 %s(%+.2f%%) 교체 청산",
+                                signal.getStockName() != null ? signal.getStockName() : ticker,
+                                (signal.getConfidence() != null ? signal.getConfidence() : 0.8) * 100.0,
+                                swapTarget.getStockName(), targetProfitRate);
+
+                        log.info(">> 🔄 [자본 회전 발동] {} 교체 매도 후 {} 신규 교체 매수 진행", swapTarget.getStockName(), ticker);
+                        portfolioManager.sellPosition(swapTarget.getTicker(), targetPrice, swapSellReason);
+
+                        // 교체 매도 대금($3,700+, 약 500만원) 입금 후 신규 종목 매수 수량 재계산
+                        qty = calculateBuyQuantity(signal, ticker, price);
+                        if (qty > 0) {
+                            signal.setReason(String.format("[자본 회전 교체 매수] 부진 종목 %s 정리 후 고득점 기회주 진입: %s",
+                                    swapTarget.getStockName(), signal.getReason()));
+                            log.info(">> 🔄 [자본 회전 성공] {} {}주 교체 매수 체결 준비 완료!", ticker, qty);
+                        }
+                    }
+                }
+
+                if (qty <= 0) {
+                    log.warn(">> [매수 스킵] {} 비중 한도/현금 보유 비율 제약으로 매수 수량이 0주입니다.", ticker);
+                    return;
+                }
             }
         }
         String orderQty = String.valueOf(qty);

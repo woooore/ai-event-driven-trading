@@ -394,6 +394,18 @@
       animation: pulse 1.5s infinite;
     }
 
+    .tag-swap-sell {
+      background: rgba(168, 85, 247, 0.25);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.45);
+    }
+
+    .tag-swap-buy {
+      background: rgba(6, 182, 212, 0.25);
+      color: #22d3ee;
+      border: 1px solid rgba(6, 182, 212, 0.45);
+    }
+
     /* TICKER TRADE JOURNEY GRID */
     .ticker-journey-grid {
       display: grid;
@@ -2328,7 +2340,9 @@
           let tagClass = 'tag-buy';
           let tagLabel = l.actionLabel || '매수';
 
-          if (!isBuy) {
+          if (l.actionLabel && l.actionLabel.includes('교체')) {
+            tagClass = isBuy ? 'tag-swap-buy' : 'tag-swap-sell';
+          } else if (!isBuy) {
             if (l.actionLabel && l.actionLabel.includes('긴급')) {
               tagClass = 'tag-emergency';
             } else if ((l.realizedPnl || 0) >= 0) {
@@ -2919,7 +2933,10 @@
             const isBuy = l.action === 'BUY';
             const timeOnly = (l.timestamp && l.timestamp.length >= 19) ? l.timestamp.substring(11, 19) : (l.timestamp || '');
             const priceKrw = formatKrw(l.price * rate);
-            const tagClass = isBuy ? 'tag-buy' : ((l.realizedPnl || 0) >= 0 ? 'tag-take-profit' : 'tag-stop-loss');
+            let tagClass = isBuy ? 'tag-buy' : ((l.realizedPnl || 0) >= 0 ? 'tag-take-profit' : 'tag-stop-loss');
+            if (l.actionLabel && l.actionLabel.includes('교체')) {
+              tagClass = isBuy ? 'tag-swap-buy' : 'tag-swap-sell';
+            }
             const actionText = l.actionLabel || (isBuy ? '매수 체결' : '매도 체결');
 
             const pnlFragment = !isBuy

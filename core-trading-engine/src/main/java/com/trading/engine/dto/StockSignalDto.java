@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 @Getter
+@lombok.Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -102,6 +103,13 @@ public class StockSignalDto {
     @JsonProperty("news_impact_score")
     @JsonAlias({"newsImpactScore"})
     private Integer newsImpactScore;
+
+    /**
+     * 종합 퀀트 알파 스코어 (0~100)
+     */
+    @JsonProperty("quant_score")
+    @JsonAlias({"quantScore"})
+    private Integer quantScore;
 
     /**
      * 선반영(Priced-in) 위험도: LOW, MEDIUM, HIGH

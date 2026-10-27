@@ -53,5 +53,38 @@
     "pnl_usd": -4.80,
     "pnl_pct": -2.8,
     "lesson_learned": "이미 온 시장이 다 아는 공공연한 호재(비만약 인기 지속 등)는 신규 모멘텀이 될 수 없으며, 단기 고점에서 진입 시 손실 발생. 신규 FDA 승인이나 깜짝 임상 성공 같은 '새로운 충격'이 아니면 진입하지 말 것."
+  },
+  {
+    "id": "lesson-006",
+    "ticker": "MSFT",
+    "headline": "Microsoft offers around 60,000 employees voluntary buyouts",
+    "summary": "Microsoft offers voluntary buyouts to streamline organization and accelerate AI efficiency.",
+    "ai_reason": "인력 감축/희망퇴직을 단순 사업 축소 악재로 오판하여 신중 관망(HOLD)했으나 주가 상승 기회 상실",
+    "action": "HOLD",
+    "pnl_usd": 0.0,
+    "pnl_pct": 0.0,
+    "lesson_learned": "마이크로소프트 등 빅테크의 희망퇴직(Voluntary Buyouts)이나 인력 효율화는 단순 사업 악화가 아니라 고정비 절감 및 영업이익률 개선(Operating Leverage), AI 생산성 집중을 위한 강력한 호재(Cost Discipline)로 작용함. 이를 기계적 악재로 판단하지 말고 수익성 개선 촉매로 평가할 것."
+  },
+  {
+    "id": "lesson-007",
+    "ticker": "KR",
+    "headline": "Kroger announces workforce optimization and streamlining initiative to boost operating margin",
+    "summary": "Kroger cuts corporate overhead to improve operating margin and reinvest in supply chain efficiency.",
+    "ai_reason": "인력 감축 및 본사 비용 통제 발표로 영업이익률 서프라이즈 기대감 반영",
+    "action": "BUY",
+    "pnl_usd": 8.40,
+    "pnl_pct": 4.2,
+    "lesson_learned": "크로거(Kroger) 등 유통 및 성숙 대기업의 구조조정 및 인력 감축은 영업이익률을 극대화하는 주주 친화적 호재. 특히 저P/E 가치주에서 마진 개선 발표 시 주가 상승 모멘텀이 강력하게 발생함."
+  },
+  {
+    "id": "lesson-008",
+    "ticker": "META",
+    "headline": "Meta announces Year of Efficiency with substantial workforce reduction and restructuring",
+    "summary": "Mark Zuckerberg declares Year of Efficiency cutting 10,000 roles to streamline layers and boost margins.",
+    "ai_reason": "비용 절감 및 AI 생산성 극대화 '효율성의 해' 선언 호재 반영",
+    "action": "BUY",
+    "pnl_usd": 45.20,
+    "pnl_pct": 18.5,
+    "lesson_learned": "월가는 방만한 인력 확장을 멈추고 고정비를 축소하는 '효율화(Year of Efficiency)'를 가장 열광적으로 지지함. 빅테크의 인력 구조조정은 이익 마진 폭발의 전조 현상이므로 절대 악재로 오판하지 말고 마진 개선 호재로 평가할 것."
   }
 ]

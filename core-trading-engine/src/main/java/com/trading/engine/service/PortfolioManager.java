@@ -166,13 +166,16 @@ public class PortfolioManager {
                     String.format(Locale.US, "%.2f", targetStopLoss));
         }
 
+        String buyActionLabel = (signal.getReason() != null && signal.getReason().contains("교체 매수"))
+                ? "교체 매수" : "매수 체결";
+
         // 거래 히스토리 기록 (한국 시간 및 한국어 라벨 적용)
         tradeLogs.add(0, TradeLog.builder()
                 .id(UUID.randomUUID().toString().substring(0, 8))
                 .ticker(ticker)
                 .stockName(koreanName)
                 .action("BUY")
-                .actionLabel("매수 체결")
+                .actionLabel(buyActionLabel)
                 .quantity(quantity)
                 .price(price)
                 .profitRate(0.0)
@@ -187,7 +190,32 @@ public class PortfolioManager {
     }
 
     /**
-     * 포지션 매도 처리 (익절 / 손절 / AI 악재 긴급 매도)
+     * 포트폴리오 교체 매매 (Capital Rotation)를 위한 부진 종목 탐색
+     * - 수익률 +1.0% 이상인 종목은 추세 추종(Winner) 보호로 절대 매도 금지
+     * - 수익률 +1.0% 미만(손실 중이거나 횡보/부진)인 종목 중 가장 수익률이 낮은 종목 1개 선정
+     */
+    public synchronized Position findWorstPerformingPositionForSwap() {
+        if (positions.isEmpty()) {
+            return null;
+        }
+
+        Position worst = null;
+        double minProfitRate = 1.0; // 최소 +1.0% 미만인 종목만 교체 대상
+
+        for (Position p : positions.values()) {
+            double curPrice = p.getCurrentPrice() > 0 ? p.getCurrentPrice() : p.getBuyPrice();
+            double profitRate = ((curPrice - p.getBuyPrice()) / p.getBuyPrice()) * 100.0;
+            if (profitRate < minProfitRate) {
+                minProfitRate = profitRate;
+                worst = p;
+            }
+        }
+
+        return worst;
+    }
+
+    /**
+     * 포지션 매도 처리 (익절 / 손절 / AI 악재 긴급 매도 / 자본 회전 교체 매도)
      */
     public synchronized boolean sellPosition(String ticker, double executionPrice, String reason) {
         Position pos = positions.remove(ticker.toUpperCase());
@@ -206,7 +234,9 @@ public class PortfolioManager {
         LocalDateTime nowKst = LocalDateTime.now(KST_ZONE);
 
         String actionLabel = "매도 체결";
-        if (reason != null && reason.contains("악재")) {
+        if (reason != null && reason.contains("교체")) {
+            actionLabel = "교체 매도";
+        } else if (reason != null && reason.contains("악재")) {
             actionLabel = "AI 긴급 매도";
         } else if (profitUsd > 0) {
             actionLabel = "익절 매도";
