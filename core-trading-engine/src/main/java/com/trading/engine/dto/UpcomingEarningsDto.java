@@ -25,3 +25,4 @@ public class UpcomingEarningsDto {
     private String keyWatchPoints;      // 주요 관전 포인트 (예: "아이폰17 수요 및 AI 인프라")
     private String impliedVolatility;   // 실적 발표 옵션 내재 변동성 (예: "±5.8%")
 }
+
