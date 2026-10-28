@@ -820,8 +820,8 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
 
         # 1차: 스마트 매수 안전장치 (호재 모멘텀 초입은 즉시 매수 허용!)
         if signal.action == "BUY":
-            is_pullback = (down_days >= 1) or (pullback_pct <= -1.8) or (rsi <= 52.0)
-            is_catalyst = (signal.news_impact_score is not None and signal.news_impact_score >= 62) or (quant_score >= 68)
+            is_pullback = ((down_days >= 2) or (pullback_pct <= -2.5) or (rsi <= 45.0)) and (signal.news_impact_score is not None and signal.news_impact_score >= 68)
+            is_catalyst = (signal.news_impact_score is not None and signal.news_impact_score >= 75) or (quant_score >= 76 and (signal.news_impact_score or 0) >= 68)
 
             if not is_pullback and not is_catalyst:
                 log_ts(f"   🛡️ [엄선 매수 원칙 적용] {ticker} 눌림목 및 뉴스 촉매({signal.news_impact_score}점) 미흡 -> 관망 HOLD")
@@ -1035,7 +1035,7 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
         log_ts(f"   ⚠️ [분석 로그 전송 실패]: {le}")
 
     # BUY or SELL & 확신도 >= 0.65 일 때 트레이딩 엔진 주문 Kafka 전송
-    if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.65:
+    if (signal.action == "BUY" and signal.confidence >= 0.78 and ((signal.news_impact_score or 0) >= 74 or (signal.quant_score or 0) >= 76)) or (signal.action == "SELL" and signal.confidence >= 0.75):
         market_open, market_msg = is_us_market_open_or_premarket()
         if not market_open:
             record_weekend_intelligence(
@@ -1153,7 +1153,7 @@ def scan_market_wide_news(batch_size: int = 25):
                 log_ts(f"   ⚠️ [분석 로그 전송 실패]: {le}")
 
             # BUY or SELL & 확신도 >= 0.65 일 때 트레이딩 엔진 주문 전송
-            if signal.action in ["BUY", "SELL"] and signal.confidence >= 0.65:
+            if (signal.action == "BUY" and signal.confidence >= 0.78 and ((signal.news_impact_score or 0) >= 74 or (signal.quant_score or 0) >= 76)) or (signal.action == "SELL" and signal.confidence >= 0.75):
                 market_open, market_msg = is_us_market_open_or_premarket()
                 if not market_open:
                     record_weekend_intelligence(

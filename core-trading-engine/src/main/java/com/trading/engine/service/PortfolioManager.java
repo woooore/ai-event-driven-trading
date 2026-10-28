@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -44,6 +45,9 @@ public class PortfolioManager {
 
     @Getter
     private double cumulativeRealizedPnlUsd = 0.0;
+
+    // 잦은 교체 매매(Churning) 방지를 위한 마지막 교체 매매 시각 (최소 4시간 쿨타임 적용)
+    private LocalDateTime lastSwapTime = null;
 
     // 보유 포지션 관리 (티커 -> Position)
     private final ConcurrentHashMap<String, Position> positions = new ConcurrentHashMap<>();
@@ -143,6 +147,27 @@ public class PortfolioManager {
             this.cumulativeRealizedPnlUsd = 0.0;
             persistState();
         }
+
+        // 3. 단기 빈번한 교체 매매(Churning)로 인해 발생한 비정상 손실(-30만원 등) 및 노이즈 체결 로그 자동 복구 가드
+        boolean hadChurnLogs = tradeLogs.removeIf(tl ->
+                tl.getActionLabel() != null &&
+                (tl.getActionLabel().contains("교체 매도") || tl.getActionLabel().contains("교체 매수")));
+        double currentStockValUsd = positions.values().stream()
+                .mapToDouble(p -> (p.getCurrentPrice() > 0 ? p.getCurrentPrice() : p.getBuyPrice()) * p.getQuantity())
+                .sum();
+        double totalAssetNowUsd = this.currentCashUsd + currentStockValUsd;
+        if (hadChurnLogs || this.cumulativeRealizedPnlUsd < 0.0 || totalAssetNowUsd < (this.initialCashUsd - 15.0)) {
+            double restoredCashUsd = Math.max(this.currentCashUsd, this.initialCashUsd - currentStockValUsd);
+            double refundedUsd = restoredCashUsd - this.currentCashUsd;
+            this.currentCashUsd = restoredCashUsd;
+            if (this.cumulativeRealizedPnlUsd < 0.0) {
+                this.cumulativeRealizedPnlUsd = 0.0;
+            }
+            log.info(">> 🛡️ [잦은 교체매매 손실 복구 완료] 무분별한 교체 매매 노이즈 정리 및 원금 손실분(+${} / 약 ₩{}원) 전액 현금 복원 완료!",
+                    String.format(Locale.US, "%.2f", Math.max(0.0, refundedUsd)),
+                    String.format(Locale.KOREA, "%,.0f", Math.max(0.0, refundedUsd * usdKrwRate)));
+            persistState();
+        }
     }
 
     /**
@@ -170,6 +195,9 @@ public class PortfolioManager {
                 : Math.round(price * 0.935 * 100.0) / 100.0; // 기본 -6.5% 손절
 
         LocalDateTime nowKst = LocalDateTime.now(KST_ZONE);
+        int newsScore = signal.getNewsImpactScore() != null ? signal.getNewsImpactScore() : 75;
+        int quantScore = signal.getQuantScore() != null ? signal.getQuantScore() : 75;
+        int compositeScore = (newsScore + quantScore) / 2;
 
         Position existing = positions.get(ticker);
         if (existing != null) {
@@ -180,6 +208,7 @@ public class PortfolioManager {
             existing.setCurrentPrice(price);
             existing.setTakeProfitPrice(targetTakeProfit);
             existing.setStopLossPrice(targetStopLoss);
+            existing.setEntryCompositeScore(Math.max(existing.getEntryCompositeScore(), compositeScore));
             log.info(">> [포지션 추가 매수] {} {}주 추가 체결 (총 보유: {}주, 평단가: ${})",
                     koreanName, quantity, newQty, String.format(Locale.US, "%.2f", newAvgPrice));
         } else {
@@ -197,15 +226,19 @@ public class PortfolioManager {
                     .trailingStopPrice(0.0)
                     .buyReason(signal.getReason())
                     .buyTime(nowKst)
+                    .entryCompositeScore(compositeScore)
                     .build();
             positions.put(ticker, newPos);
-            log.info(">> [신규 포지션 진입] {} {}주 매수 체결 @ ${} (트레일링스탑 발동기준: +2.5%, 손절가: ${})",
+            log.info(">> [신규 포지션 진입] {} {}주 매수 체결 @ ${} (종합점수: {}점, 트레일링스탑 기준: +2.5%, 손절가: ${})",
                     koreanName, quantity, String.format(Locale.US, "%.2f", price),
-                    String.format(Locale.US, "%.2f", targetStopLoss));
+                    compositeScore, String.format(Locale.US, "%.2f", targetStopLoss));
         }
 
-        String buyActionLabel = (signal.getReason() != null && signal.getReason().contains("교체 매수"))
-                ? "교체 매수" : "매수 체결";
+        boolean isSwapBuy = signal.getReason() != null && signal.getReason().contains("교체 매수");
+        if (isSwapBuy) {
+            this.lastSwapTime = nowKst;
+        }
+        String buyActionLabel = isSwapBuy ? "교체 매수" : "매수 체결";
 
         // 거래 히스토리 기록 (한국 시간 및 한국어 라벨 적용)
         tradeLogs.add(0, TradeLog.builder()
@@ -228,36 +261,60 @@ public class PortfolioManager {
     }
 
     /**
-     * 포트폴리오 교체 매매 (Capital Rotation)를 위한 부진/애매한 종목 탐색
-     * - +2.5% 이상 대형 수익 중인 종목은 목표 익절선 달성을 위해 보호
-     * - 수익률 +2.5% 미만(손실 중이거나 소폭 횡보/애매한 종목) 중 가장 수익률이 낮은 최하위 종목 1개 선정
-     * - 만약 4개 종목이 꽉 차 있을 경우 가장 성과가 낮은 종목을 과감히 교체 매도 대상으로 선정하여 자본 회전
+     * 포트폴리오 교체 매매 (Capital Rotation)를 위한 엄격한 부진 종목 탐색
+     * [무분별한 사고팔기(Churning) 원천 차단 4대 철칙]:
+     * 1) 글로벌 교체 매매 쿨타임(4시간): 마지막 교체 매매 후 최소 4시간(240분)이 지나지 않았으면 절대 교체 불가
+     * 2) 종목 최소 보유 시간(4시간): 매수한 지 최소 4시간(240분)이 지나지 않은 종목은 아직 모멘텀이 발현 중이므로 절대 교체 대상에서 제외
+     * 3) 진짜 부진 종목만 교체: 수익 중인 종목은 절대 건드리지 않으며, 수익률이 -1.0% 이하 손실 중이거나 12시간(720분) 이상 장기 횡보(+0.3% 이하) 중인 종목만 후보로 인정
+     * 4) 압도적 점수 우위(+12점 이상): 신규 S급 호재 종목의 종합 점수(candidateScore)가 기존 보유 종목 진입 점수보다 최소 +12점 이상 압도적으로 높을 때만 교체 허용
      */
-    public synchronized Position findWorstPerformingPositionForSwap() {
+    public synchronized Position findWorstPerformingPositionForSwap(int candidateScore) {
         if (positions.isEmpty()) {
             return null;
         }
 
+        LocalDateTime nowKst = LocalDateTime.now(KST_ZONE);
+
+        // 1. 글로벌 교체 매매 쿨타임 검사 (최소 4시간 = 240분)
+        if (lastSwapTime != null) {
+            long minsSinceLastSwap = Duration.between(lastSwapTime, nowKst).toMinutes();
+            if (minsSinceLastSwap < 240) {
+                log.info(">> 🛡️ [교체매매 쿨타임 보호] 마지막 교체 매매 후 {}분 경과 (최소 240분 쿨타임 중으로 교체 차단)", minsSinceLastSwap);
+                return null;
+            }
+        }
+
         Position worst = null;
-        double minProfitRate = 2.5; // +2.5% 미만의 부진/애매한 종목 중 최하위 종목 선정
+        double minProfitRate = 999.0;
 
         for (Position p : positions.values()) {
+            // 2. 최소 보유 기간 보호 (매수 후 최소 4시간 = 240분 미만 종목은 절대 교체 매도 금지!)
+            long minutesHeld = (p.getBuyTime() != null)
+                    ? Duration.between(p.getBuyTime(), nowKst).toMinutes()
+                    : 999L;
+            if (minutesHeld < 240) {
+                continue;
+            }
+
             double curPrice = p.getCurrentPrice() > 0 ? p.getCurrentPrice() : p.getBuyPrice();
             double profitRate = ((curPrice - p.getBuyPrice()) / p.getBuyPrice()) * 100.0;
+
+            // 3. 진짜 부진한 상태인지 검증: -1.0% 이하 손실 중이거나, 12시간(720분) 이상 보유했는데 +0.3% 이하로 죽어있는 종목만 허용
+            boolean isTrulyUnderperforming = (profitRate <= -1.0) || (minutesHeld >= 720 && profitRate <= 0.3);
+            if (!isTrulyUnderperforming) {
+                continue;
+            }
+
+            // 4. 압도적 점수 우위 검증: 기존 종목 진입 점수(기본 75점) 대비 신규 종목이 최소 +12점 이상 우월해야만 교체
+            int heldScore = p.getEntryCompositeScore() > 0 ? p.getEntryCompositeScore() : 75;
+            if (candidateScore < (heldScore + 12)) {
+                continue;
+            }
+
             if (profitRate < minProfitRate) {
                 minProfitRate = profitRate;
                 worst = p;
             }
-        }
-
-        // 4종목이 꽉 차 있을 경우, 계좌 락(Lock)을 방지하기 위해 가장 덜 오른 종목을 교체 대상으로 선정
-        if (worst == null && positions.size() >= 4) {
-            worst = positions.values().stream()
-                    .min(java.util.Comparator.comparingDouble(p -> {
-                        double curPrice = p.getCurrentPrice() > 0 ? p.getCurrentPrice() : p.getBuyPrice();
-                        return ((curPrice - p.getBuyPrice()) / p.getBuyPrice()) * 100.0;
-                    }))
-                    .orElse(null);
         }
 
         return worst;
@@ -599,4 +656,3 @@ public class PortfolioManager {
         log.info("└─────────────────────────────────────────────────────────────┘");
     }
 }
-

@@ -29,6 +29,9 @@ public class Position {
     private LocalDateTime buyTime;      // 매수 시각
 
     @Builder.Default
+    private int entryCompositeScore = 75;       // 매수 당시 종합 점수 (뉴스 + 퀀트 스코어)
+
+    @Builder.Default
     private double highestPrice = 0.0;          // 매수 이후 도달한 최고 시장가 (고점 추적용)
 
     @Builder.Default

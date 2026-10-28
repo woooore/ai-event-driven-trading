@@ -100,42 +100,62 @@ public class KisOrderService {
             var held = portfolioManager.getPosition(ticker);
             qty = held != null ? held.getQuantity() : defaultQuantity;
         } else {
+            // [1단계: 최초 진입부터 진짜 좋은 호재만 엄선 매수 필터]
+            double conf = signal.getConfidence() != null ? signal.getConfidence() : 0.0;
+            int newsScore = signal.getNewsImpactScore() != null ? signal.getNewsImpactScore() : 0;
+            int quantScore = signal.getQuantScore() != null ? signal.getQuantScore() : 0;
+            int candidateCompositeScore = (newsScore + quantScore) / 2;
+
+            // 이미 보유 중인 종목은 중복 추격 매수하지 않음 (종목당 500만원 1회 정밀 진입 원칙)
+            if (portfolioManager.hasPosition(ticker)) {
+                log.info(">> [중복 매수 방지] {} 종목은 이미 포트폴리오에 보유 중이므로 추가 매수를 생략합니다.", ticker);
+                return;
+            }
+
+            // 최초 매수 시에도 애매한 호재는 거르고 확신도 >= 0.78 & (뉴스 >= 74 또는 퀀트 >= 76) 이상만 매수
+            boolean isStrongInitialBuy = (conf >= 0.78) && (newsScore >= 74 || quantScore >= 76);
+            if (!isStrongInitialBuy) {
+                log.info(">> 🛡️ [엄선 매수 필터 작동] {} 매수 보류 (확신도: {}, 뉴스: {}점, 퀀트: {}점 -> 확실한 A급 호재 기준 미달)",
+                        ticker, String.format(Locale.US, "%.2f", conf), newsScore, quantScore);
+                return;
+            }
+
             qty = calculateBuyQuantity(signal, ticker, price);
             if (qty <= 0) {
-                // [자본 회전 교체 매매 (Capital Rotation / Swap Buy) 로직 발동 검사]
-                // 1) 신규 종목이 확실한 매수 적격 (확신도 >= 0.70 또는 뉴스점수 >= 70 또는 퀀트점수 >= 70)
-                // 2) 이미 해당 종목을 보유하고 있지 않음
-                // 3) 현금 부족으로 1주도 살 수 없는 상태 (2,000만원 한도 4종목 포화)
-                boolean isHighQuality = (signal.getConfidence() != null && signal.getConfidence() >= 0.70)
-                        || (signal.getNewsImpactScore() != null && signal.getNewsImpactScore() >= 70)
-                        || (signal.getQuantScore() != null && signal.getQuantScore() >= 70);
+                // [2단계: 초특급 S급 호재 전용 자본 회전 교체 매매 (Capital Rotation / Swap Buy) 검사]
+                // 무분별한 사고팔기(Churning) 방지를 위해 '또는(OR)'이 아닌 '모두 충족(AND)' 조건으로 격상!
+                // 1) AI 확신도 >= 0.86 (86% 이상 초고확신)
+                // 2) 뉴스 임팩트 점수 >= 85점 (어닝 서프라이즈, 가이던스 대폭 상향, 대형 수주 등 진짜 초대형 호재)
+                // 3) 퀀트 알파 점수 >= 76점 (차트/수급/눌림목까지 완벽히 뒷받침)
+                // 4) PortfolioManager 내부에서 '최소 4시간 보유 경과 + 4시간 교체 쿨타임 + 현재 손실 중(-1.0% 이하) + 기존 종목보다 종합점수 +12점 이상 우월' 조건을 모두 통과해야만 교체 실행!
+                boolean isMegaSTierCatalyst = (conf >= 0.86) && (newsScore >= 85) && (quantScore >= 76);
 
-                if (isHighQuality && !portfolioManager.hasPosition(ticker) && portfolioManager.getAllPositions().size() >= 3) {
-                    com.trading.engine.dto.Position swapTarget = portfolioManager.findWorstPerformingPositionForSwap();
+                if (isMegaSTierCatalyst && !portfolioManager.hasPosition(ticker) && portfolioManager.getAllPositions().size() >= 3) {
+                    com.trading.engine.dto.Position swapTarget = portfolioManager.findWorstPerformingPositionForSwap(candidateCompositeScore);
                     if (swapTarget != null) {
                         double targetPrice = swapTarget.getCurrentPrice() > 0 ? swapTarget.getCurrentPrice() : swapTarget.getBuyPrice();
                         double targetProfitRate = ((targetPrice - swapTarget.getBuyPrice()) / swapTarget.getBuyPrice()) * 100.0;
                         String swapSellReason = String.format(Locale.US,
-                                "[자본 회전 교체 매도] 신규 유망주 %s(확신도 %.0f%%) 매수 자금 확보를 위해 부진 종목 %s(%+.2f%%) 교체 청산",
+                                "[S급 특급호재 교체 매도] 초대형 호재주 %s(확신도 %.0f%%, 뉴스 %d점) 진입을 위해 장기 부진 종목 %s(%+.2f%%) 교체 청산",
                                 signal.getStockName() != null ? signal.getStockName() : ticker,
-                                (signal.getConfidence() != null ? signal.getConfidence() : 0.8) * 100.0,
+                                conf * 100.0, newsScore,
                                 swapTarget.getStockName(), targetProfitRate);
 
-                        log.info(">> 🔄 [자본 회전 발동] {} 교체 매도 후 {} 신규 교체 매수 진행", swapTarget.getStockName(), ticker);
+                        log.info(">> 🔄 [S급 특급호재 자본 회전 발동] {} 교체 매도 후 {} 신규 교체 매수 진행", swapTarget.getStockName(), ticker);
                         portfolioManager.sellPosition(swapTarget.getTicker(), targetPrice, swapSellReason);
 
-                        // 교체 매도 대금($3,700+, 약 500만원) 입금 후 신규 종목 매수 수량 재계산
+                        // 교체 매도 대금 입금 후 신규 종목 매수 수량 재계산
                         qty = calculateBuyQuantity(signal, ticker, price);
                         if (qty > 0) {
-                            signal.setReason(String.format("[자본 회전 교체 매수] 부진 종목 %s 정리 후 고득점 기회주 진입: %s",
-                                    swapTarget.getStockName(), signal.getReason()));
+                            signal.setReason(String.format("[S급 특급호재 교체 매수] 부진 종목 %s 정리 후 초특급 호재주(뉴스 %d점/확신도 %.0f%%) 진입: %s",
+                                    swapTarget.getStockName(), newsScore, conf * 100.0, signal.getReason()));
                             log.info(">> 🔄 [자본 회전 성공] {} {}주 교체 매수 체결 준비 완료!", ticker, qty);
                         }
                     }
                 }
 
                 if (qty <= 0) {
-                    log.warn(">> [매수 스킵] {} 비중 한도/현금 보유 비율 제약으로 매수 수량이 0주입니다.", ticker);
+                    log.info(">> [매수 대기] {} 현재 포트폴리오 4종목 보유 중 (S급 특급 호재 교체 기준 미달로 기존 보유 종목 유지)", ticker);
                     return;
                 }
             }
@@ -149,10 +169,10 @@ public class KisOrderService {
         log.info("액션 : {}", action);
         log.info("수량 : {}주, 단가: ${}", orderQty, ordUnpr);
         log.info("AI 확신도: {}, 근거: {}", signal.getConfidence(), signal.getReason());
-        log.info("시뮬레이션 모드: {}", simulationMode ? "ON (가상 체결 & 1,000만원 포트폴리오 연동)" : "OFF (실계좌 주문 전송)");
+        log.info("시뮬레이션 모드: {}", simulationMode ? "ON (가상 체결 & 2,000만원 포트폴리오 연동)" : "OFF (실계좌 주문 전송)");
         log.info("--------------------------------------------------");
 
-        // 1. 시뮬레이션 모드일 경우: 1,000만원 가상 포트폴리오 매수/매도 반영
+        // 1. 시뮬레이션 모드일 경우: 2,000만원 가상 포트폴리오 매수/매도 반영
         if (simulationMode) {
             if ("SELL".equalsIgnoreCase(action)) {
                 portfolioManager.sellPosition(ticker, price, signal.getReason());
