@@ -10,5 +10,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# 60초 주기로 24시간 실시간 무한 모니터링 실행
-CMD ["python", "-u", "analyzer.py", "--loop", "--interval", "60"]
+# 20초 초고속 주기로 24시간 실시간 무한 모니터링 실행
+CMD ["python", "-u", "analyzer.py", "--loop", "--interval", "20"]

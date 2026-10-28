@@ -108,7 +108,32 @@ public class PortfolioManager {
             log.info("==================================================");
         }
 
-        // 비정상 데이터 유실(보유 종목 0개인데 잔고가 10% 미만으로 증발한 상태) 방어 가드
+        // 1. 구버전 자투리 소액 포지션(투자금 $1,200 / 약 160만원 미만 파편 종목) 자동 현금 환원 정리 (500만원씩 4종목 집중 원칙 유지)
+        if (positions.size() > 4) {
+            List<String> dustTickers = new ArrayList<>();
+            for (Position p : positions.values()) {
+                double investedUsd = p.getBuyPrice() * p.getQuantity();
+                if (investedUsd < 1200.0) {
+                    dustTickers.add(p.getTicker());
+                }
+            }
+            for (String tk : dustTickers) {
+                Position removed = positions.remove(tk);
+                if (removed != null) {
+                    double refund = removed.getCurrentPrice() > 0
+                            ? (removed.getCurrentPrice() * removed.getQuantity())
+                            : (removed.getBuyPrice() * removed.getQuantity());
+                    this.currentCashUsd += refund;
+                    log.info(">> 🧹 [구버전 소액 자투리 종목 정리] {} ({}주, 약 ${}) -> 현금 잔고로 환원 완료",
+                            tk, removed.getQuantity(), String.format(Locale.US, "%.2f", refund));
+                }
+            }
+            if (!dustTickers.isEmpty()) {
+                persistState();
+            }
+        }
+
+        // 2. 비정상 데이터 유실(보유 종목 0개인데 잔고가 10% 미만으로 증발한 상태) 방어 가드
         if (positions.isEmpty() && currentCashUsd < (initialCashUsd * 0.1)) {
             log.warn(">> ⚠️ [비정상 데이터 유실 감지] 보유 종목 0개에 잔여 현금이 ${}뿐임. 초기 자본 ₩{} (${})으로 자동 자가 복원합니다.",
                     String.format(Locale.US, "%.2f", currentCashUsd),

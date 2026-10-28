@@ -1970,6 +1970,64 @@
       box-shadow: 0 2px 10px rgba(14, 165, 233, 0.35);
     }
 
+    .company-group-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(99, 102, 241, 0.28);
+      border-radius: 16px;
+      margin-bottom: 18px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .company-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 20px;
+      background: linear-gradient(90deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+    }
+
+    .company-group-header:hover {
+      background: linear-gradient(90deg, rgba(49, 46, 129, 0.45), rgba(15, 23, 42, 0.95));
+    }
+
+    .company-group-body {
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .view-mode-toggle {
+      display: inline-flex;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 4px;
+    }
+
+    .view-mode-btn {
+      padding: 6px 12px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .view-mode-btn.active {
+      background: var(--accent-indigo);
+      color: #ffffff;
+    }
+
   </style>
 </head>
 <body>
@@ -2403,9 +2461,12 @@
             <button class="log-search-clear" onclick="clearLogCompanySearch()" title="검색어 초기화">✕ 전체보기</button>
           </div>
 
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <span class="badge badge-live">실시간 영구 보존 중</span>
-            <button class="btn-chart-search" style="padding: 7px 16px; font-size: 12px; background: var(--accent-indigo); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;" onclick="loadAnalysisLogs()">🔄 새로고침</button>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div class="view-mode-toggle">
+              <button id="btn-log-view-company" class="view-mode-btn active" onclick="setLogViewMode('COMPANY')">🏢 기업별 묶어보기</button>
+              <button id="btn-log-view-timeline" class="view-mode-btn" onclick="setLogViewMode('TIMELINE')">🕒 시간순 전체보기</button>
+            </div>
+            <button class="btn-chart-search" style="padding: 7px 14px; font-size: 12px; background: var(--accent-indigo); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;" onclick="loadAnalysisLogs()">🔄 새로고침</button>
           </div>
         </div>
 
@@ -3127,7 +3188,7 @@
               </div>
               <div class="balance-card-pnl">
                 <div class="${pnlClass}" style="font-family: var(--font-mono); font-size: 18px; font-weight: 800;">
-                  ${pnlCardSign}${formatPct(profitRate)}
+                  ${formatPct(profitRate)}
                 </div>
                 <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
                   ${pnlCardSign}${formatUsd(pnlUsd)} (${pnlCardSign}${formatKrw(pnlKrw)})
@@ -3208,7 +3269,7 @@
               <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${pnlTableSign}${formatUsd(pnlUsd)}</div>
             </td>
             <td>
-              <span class="number-mono ${pnlClass}" style="font-weight: 700;">${pnlTableSign}${formatPct(profitRate)}</span>
+              <span class="number-mono ${pnlClass}" style="font-weight: 700;">${formatPct(profitRate)}</span>
             </td>
             <td>
               <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">익절: ${formatUsd(p.takeProfitPrice)}</div>
@@ -3789,6 +3850,62 @@
       renderAnalysisLogs(filtered);
     }
 
+    let currentLogViewMode = 'COMPANY'; // 기본값: 기업별로 묶어서 보기
+
+    function setLogViewMode(mode) {
+      currentLogViewMode = mode;
+      const btnComp = document.getElementById('btn-log-view-company');
+      const btnTime = document.getElementById('btn-log-view-timeline');
+      if (btnComp) btnComp.classList.toggle('active', mode === 'COMPANY');
+      if (btnTime) btnTime.classList.toggle('active', mode === 'TIMELINE');
+      applyLogFiltersAndRender();
+    }
+
+    function buildSingleLogItemHtml(l) {
+      const isBuy = l.action === 'BUY';
+      const isSell = l.action === 'SELL';
+      const actionBadgeClass = isBuy ? 'action-buy-badge' : (isSell ? 'action-sell-badge' : 'action-hold-badge');
+      const actionIcon = isBuy ? '🟢' : (isSell ? '🚨' : '⏸️');
+      const actionLabel = isBuy ? `BUY (권장비중 ${l.position_size_pct || 25.0}%)` : (isSell ? 'SELL (악재 긴급탈출)' : 'HOLD (신중 관망)');
+
+      const changeSign = (l.pct_change || 0) >= 0 ? '+' : '';
+      const changeClass = (l.pct_change || 0) >= 0 ? 'profit-positive' : 'profit-negative';
+
+      const newsImpact = l.news_impact_score != null ? l.news_impact_score : '-';
+      const pricedIn = l.priced_in_risk || 'LOW';
+      const pricedInColor = pricedIn === 'HIGH' ? '#f87171' : (pricedIn === 'MEDIUM' ? '#fbbf24' : '#34d399');
+
+      const rsiText = l.rsi ? `RSI ${l.rsi.toFixed(1)}` : 'RSI N/A';
+      const quantScoreText = l.quant_score ? `퀀트 ${l.quant_score}점` : '';
+
+      return `
+        <div class="log-feed-card">
+          <div class="log-feed-top">
+            <div class="log-feed-meta">
+              <span style="font-family: var(--font-mono); font-size: 12.5px; color: #38bdf8;">[${l.date || ''} ${l.time || ''}]</span>
+              <span class="ticker-badge">${l.ticker}</span>
+              <span style="font-size: 15px; font-weight: 700; color: #ffffff;">${getStockDisplayName(l.ticker, l.stock_name || l.stockName)}</span>
+              <span style="font-family: var(--font-mono); font-size: 13px; margin-left: 6px;">$${Number(l.order_price || 0).toFixed(2)}</span>
+              <span class="${changeClass}" style="font-family: var(--font-mono); font-size: 12px; font-weight: 700;">(${changeSign}${l.pct_change}%)</span>
+              <span class="log-badge-action ${actionBadgeClass}">${actionIcon} ${actionLabel}</span>
+            </div>
+            <div style="display: flex; gap: 8px; font-size: 11.5px; font-family: var(--font-mono); flex-wrap: wrap;">
+              <span class="strat-pill" style="color: #67e8f9;">뉴스 영향도: ${newsImpact}점</span>
+              <span class="strat-pill" style="color: ${pricedInColor};">선반영 위험: ${pricedIn}</span>
+              <span class="strat-pill" style="color: #a5b4fc;">${rsiText}</span>
+              ${quantScoreText ? `<span class="strat-pill" style="color: #fde047;">${quantScoreText}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="log-feed-headline">📰 ${l.headline || '최신 시장 헤드라인'}</div>
+          <div class="log-feed-reason">
+            <span style="font-weight: 700; color: #a5b4fc;">🤖 AI 판단 근거: </span>
+            ${l.reason || '종합 퀀트 및 뉴스 팩트 분석 완료'}
+          </div>
+        </div>
+      `;
+    }
+
     function renderAnalysisLogs(logs) {
       const feedEl = document.getElementById('log-feed-list');
       const emptyEl = document.getElementById('log-empty-state');
@@ -3797,7 +3914,6 @@
 
       if (badgeCount) badgeCount.textContent = `${allFetchedLogsCache.length}건`;
 
-      // KPI 카운트 집계
       let buyCount = 0;
       let holdCount = 0;
       let sellCount = 0;
@@ -3820,50 +3936,54 @@
       }
       if (emptyEl) emptyEl.style.display = 'none';
 
-      feedEl.innerHTML = logs.map(l => {
-        const isBuy = l.action === 'BUY';
-        const isSell = l.action === 'SELL';
-        const actionBadgeClass = isBuy ? 'action-buy-badge' : (isSell ? 'action-sell-badge' : 'action-hold-badge');
-        const actionIcon = isBuy ? '🟢' : (isSell ? '🚨' : '⏸️');
-        const actionLabel = isBuy ? `BUY (권장비중 ${l.position_size_pct || 5.0}%)` : (isSell ? 'SELL (악재 긴급탈출)' : 'HOLD (신중 관망)');
+      // [모드 1] 🏢 기업별로 묶어보기 (종목별 그룹핑 뷰)
+      if (currentLogViewMode === 'COMPANY') {
+        const grouped = {};
+        const tickerOrder = [];
+        logs.forEach(l => {
+          const tk = (l.ticker || 'UNKNOWN').toUpperCase();
+          if (!grouped[tk]) {
+            grouped[tk] = [];
+            tickerOrder.push(tk);
+          }
+          grouped[tk].push(l);
+        });
 
-        const changeSign = (l.pct_change || 0) >= 0 ? '+' : '';
-        const changeClass = (l.pct_change || 0) >= 0 ? 'profit-positive' : 'profit-negative';
+        feedEl.innerHTML = tickerOrder.map(tk => {
+          const compLogs = grouped[tk];
+          const latest = compLogs[0];
+          const dispName = getStockDisplayName(tk, latest.stock_name || latest.stockName);
+          const compBuyCnt = compLogs.filter(x => x.action === 'BUY').length;
+          const compHoldCnt = compLogs.filter(x => x.action !== 'BUY' && x.action !== 'SELL').length;
+          const changeSign = (latest.pct_change || 0) >= 0 ? '+' : '';
+          const changeClass = (latest.pct_change || 0) >= 0 ? 'profit-positive' : 'profit-negative';
 
-        const newsImpact = l.news_impact_score != null ? l.news_impact_score : '-';
-        const pricedIn = l.priced_in_risk || 'LOW';
-        const pricedInColor = pricedIn === 'HIGH' ? '#f87171' : (pricedIn === 'MEDIUM' ? '#fbbf24' : '#34d399');
-
-        const rsiText = l.rsi ? `RSI ${l.rsi.toFixed(1)}` : 'RSI N/A';
-        const quantScoreText = l.quant_score ? `퀀트 ${l.quant_score}점` : '';
-
-        return `
-          <div class="log-feed-card">
-            <div class="log-feed-top">
-              <div class="log-feed-meta">
-                <span style="font-family: var(--font-mono); font-size: 13px; color: var(--text-muted);">[${l.time || ''}]</span>
-                <span class="ticker-badge">${l.ticker}</span>
-                <span style="font-size: 15px; font-weight: 700; color: #ffffff;">${getStockDisplayName(l.ticker, l.stock_name)}</span>
-                <span style="font-family: var(--font-mono); font-size: 13px; margin-left: 6px;">$${Number(l.order_price || 0).toFixed(2)}</span>
-                <span class="${changeClass}" style="font-family: var(--font-mono); font-size: 12px; font-weight: 700;">(${changeSign}${l.pct_change}%)</span>
-                <span class="log-badge-action ${actionBadgeClass}">${actionIcon} ${actionLabel}</span>
+          return `
+            <div class="company-group-card">
+              <div class="company-group-header" onclick="selectCompanyChip('${tk}')" title="클릭하여 ${dispName} 로그만 단독 조회">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                  <span class="ticker-badge" style="font-size: 13px; padding: 5px 10px;">${tk}</span>
+                  <span style="font-size: 17px; font-weight: 800; color: #ffffff;">${dispName}</span>
+                  <span style="font-family: var(--font-mono); font-size: 14px; color: #e2e8f0; font-weight: 700;">$${Number(latest.order_price || 0).toFixed(2)}</span>
+                  <span class="${changeClass}" style="font-family: var(--font-mono); font-size: 13px; font-weight: 700;">(${changeSign}${latest.pct_change || 0}%)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-size: 12px;">총 ${compLogs.length}건 감지</span>
+                  ${compBuyCnt > 0 ? `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 12px;">🟢 BUY ${compBuyCnt}건</span>` : ''}
+                  ${compHoldCnt > 0 ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-size: 12px;">⏸️ HOLD ${compHoldCnt}건</span>` : ''}
+                  <span style="font-size: 11.5px; color: #a5b4fc; font-weight: 700; margin-left: 4px;">🔍 이 기업만 보기 ➔</span>
+                </div>
               </div>
-              <div style="display: flex; gap: 8px; font-size: 11.5px; font-family: var(--font-mono); flex-wrap: wrap;">
-                <span class="strat-pill" style="color: #67e8f9;">뉴스 영향도: ${newsImpact}점</span>
-                <span class="strat-pill" style="color: ${pricedInColor};">선반영 위험: ${pricedIn}</span>
-                <span class="strat-pill" style="color: #a5b4fc;">${rsiText}</span>
-                ${quantScoreText ? `<span class="strat-pill" style="color: #fde047;">${quantScoreText}</span>` : ''}
+              <div class="company-group-body">
+                ${compLogs.map(item => buildSingleLogItemHtml(item)).join('')}
               </div>
             </div>
-
-            <div class="log-feed-headline">📰 ${l.headline || '최신 시장 헤드라인'}</div>
-            <div class="log-feed-reason">
-              <span style="font-weight: 700; color: #a5b4fc;">🤖 AI 판단 근거: </span>
-              ${l.reason || '종합 퀀트 및 뉴스 팩트 분석 완료'}
-            </div>
-          </div>
-        `;
-      }).join('');
+          `;
+        }).join('');
+      } else {
+        // [모드 2] 🕒 시간순 전체 피드 보기
+        feedEl.innerHTML = logs.map(l => buildSingleLogItemHtml(l)).join('');
+      }
     }
 
     // ==========================================

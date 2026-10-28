@@ -592,6 +592,15 @@ def get_market_and_news(ticker: str, custom_news_list: Optional[List[dict]] = No
             current_price = float(closes[-1])
             prev_close = float(closes[-2])
             quant_info = calculate_quant_indicators(hist)
+            # 프리마켓 / 애프터마켓 / 장중 5분봉 실시간 체결가로 최신 현재가 정밀 보정
+            try:
+                intraday = t.history(period="5d", interval="5m", prepost=True)
+                if not intraday.empty and 'Close' in intraday:
+                    valid_closes = intraday['Close'].dropna().tolist()
+                    if valid_closes and float(valid_closes[-1]) > 0:
+                        current_price = float(valid_closes[-1])
+            except Exception:
+                pass
         else:
             fast_info = getattr(t, 'fast_info', None)
             if fast_info:
@@ -624,16 +633,39 @@ def get_market_and_news(ticker: str, custom_news_list: Optional[List[dict]] = No
         if custom_news_list:
             news_items = custom_news_list
         else:
+            news_items = []
+            seen_titles = set()
+            # 1순위: Google News 실시간 2시간 이내 초고속 금융 속보 피드 (지연 없는 즉시 감지)
+            try:
+                g_url = f"https://news.google.com/rss/search?q={ticker}+stock+when:2h&hl=en-US&gl=US&ceid=US:en"
+                g_feed = feedparser.parse(g_url)
+                for entry in g_feed.entries[:3]:
+                    title_clean = entry.get('title', '').split(' - ')[0].strip()
+                    if title_clean and title_clean not in seen_titles:
+                        seen_titles.add(title_clean)
+                        news_items.append({
+                            'title': title_clean,
+                            'summary': entry.get('summary', title_clean),
+                            'link': entry.get('link', ''),
+                            'published': entry.get('published', '')
+                        })
+            except Exception:
+                pass
+
+            # 2순위: Yahoo Finance 공식 종목 RSS 피드 병합
             rss_url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
             feed = feedparser.parse(rss_url)
-            news_items = []
-            for entry in feed.entries[:5]: # 최근 5개 뉴스
-                news_items.append({
-                    'title': entry.get('title', ''),
-                    'summary': entry.get('summary', ''),
-                    'link': entry.get('link', ''),
-                    'published': entry.get('published', '')
-                })
+            for entry in feed.entries[:5]:
+                title_clean = entry.get('title', '').strip()
+                if title_clean and title_clean not in seen_titles:
+                    seen_titles.add(title_clean)
+                    news_items.append({
+                        'title': title_clean,
+                        'summary': entry.get('summary', ''),
+                        'link': entry.get('link', ''),
+                        'published': entry.get('published', '')
+                    })
+            news_items = news_items[:6]
 
         return {
             'ticker': ticker,
@@ -703,8 +735,8 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
                 f"  ★ 핵심 교훈: {j.get('lesson_learned')}\n"
             )
         rag_section += (
-            "=> [RAG 교훈 적용 지침]: 당일 주가가 이미 +4.0% 이상 폭등했을 때는 추격 매수 금지.\n"
-            "   충분히 하락한 눌림목에서 분할 매수로 진입하라.\n"
+            "=> [RAG 교훈 적용 지침]: 단순 루머로 +9.0% 이상 과열 폭등한 고점만 피하고,\n"
+            "   실질적 호재(실적, 가이던스, 대규모 계약, 자본 조달, 주주환원, 빅테크 효율화)로 주가가 +1%~+8% 상승하는 모멘텀 초입에서는 '이미 올랐다'고 망설이지 말고 즉시 BUY로 진입하라!\n"
         )
 
     # 퀀트 기술적 지표 진단 요약
@@ -727,23 +759,19 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         "【핵심 철학: S&P500 분산 펀드식 1~2주 매수 절대 금지 - 종목당 약 500만원(25.0%) 엄선 집중 투자】:\n"
         "- 시장의 모든 종목을 1~2주씩 잡다하게 다 사는 것은 최악의 전략이다! 총 자본 2,000만원 중 확실한 3~4개 기회 종목에 각각 약 500만원(비중 25.0%)씩 엄선해서 매수해야 한다.\n"
         "- '차트상 며칠 연속 하락(눌림목/낙폭과대) + 실적/P/E 양호 + 치명적 악재 없음'을 동시에 충족하는 종목을 정밀 타격하라!\n\n"
-        "【BUY(매수) 진입 허용 2대 엄선 트랙 (해당 없으면 무조건 HOLD)】:\n"
-        "1. [트랙 A: 며칠 연속 하락 눌림목 + 양호한 펀더멘털/저PER + 악재 없음 (최우선 추천)]\n"
-        "   - 기술적 차트: 최근 2일 이상 연속 하락(consecutive_down_days >= 2)했거나 최근 고점 대비 -2.5% 이상 눌린 상태(pullback_pct <= -2.5%).\n"
-        "   - 밸류에이션 & 실적: PER(P/E)이 40 이하로 적정/저평가 수준이거나 우량 실적을 유지하고 있는 기업.\n"
-        "   - 악재 유무: 최근 뉴스 피드에 분식회계, 소송 패소, 가이던스 폭락, 대형 규제 제재 등 구조적 치명적 악재가 전혀 없음 (뉴스 센티먼트 NEUTRAL 또는 POSITIVE).\n"
-        "   - RSI가 25~55 안정/과매도 반등 지지 구간.\n"
-        "   ➔ 이 조건을 만족하면 적극 매수! (action='BUY', confidence: 0.72~0.88, position_size_pct: 25.0%).\n"
-        "2. [트랙 B: 강력한 어닝 서프라이즈 모멘텀 매수 (PEAD)]\n"
-        "   - EPS/매출 호실적 서프라이즈 및 가이던스 상향 팩트 확인 + 당일 주가가 +4.0% 미만으로 아직 폭등하지 않음.\n"
-        "   ➔ 적극 매수! (action='BUY', confidence: 0.75~0.88, position_size_pct: 25.0%).\n\n"
+        "【BUY(매수) 진입 허용 3대 핵심 트랙】:\n"
+        "1. [트랙 A: 연속 하락 눌림목 + 양호한 펀더멘털/저PER 반등 매수]\n"
+        "   - 최근 2일 이상 하락했거나 고점 대비 -2.0% 이상 조정받은 우량주가 치명적 악재 없이 RSI 60 이하에 위치할 때 즉시 매수! (action='BUY', confidence: 0.74~0.88, position_size_pct: 25.0%).\n"
+        "2. [트랙 B: 실시간 호재 속보 모멘텀 돌파(Breakout) 즉시 매수 - 지각 관망(HOLD) 절대 금지!]\n"
+        "   - 실적 서프라이즈, 가이던스 상향, 대규모 수주/계약, AI/GPU 자본 조달, 신약 임상 성공, 주주환원(배당/자사주), 빅테크 인력 효율화 등 확실한 호재 뉴스(news_impact_score >= 65)가 발생했을 때,\n"
+        "   - 주가가 당일 +1.0% ~ +8.0% 상승 중인 것은 '이미 다 오른 끝물'이 아니라 '기관 수급이 유입되는 호재 모멘텀 초입'이다!\n"
+        "   - 절대 '+3~5% 올랐으니 추격매수를 지양하고 HOLD한다'는 식으로 뒷북 관망하지 말고, 즉시 과감하게 매수(action='BUY', confidence: 0.78~0.92, position_size_pct: 25.0%)하라!\n"
+        "3. [트랙 C: 퀀트 알파 고득점(70점 이상) 우량주 매수]\n"
+        "   - 종합 퀀트 점수가 70점 이상이고 긍정적 뉴스 흐름이 확인되면 적극 매수하라.\n\n"
         "【구조조정 및 인력 효율화(Buyouts, Layoffs, Restructuring) 스마트 평가 룰】:\n"
-        "- 마이크로소프트(MSFT), 메타(META), 크로거(KR) 등 우량 대기업의 '자발적 희망퇴직(Voluntary Buyouts)', '인력 감축', '비용 절감(Cost Discipline)' 뉴스는 단순 사업 악화 악재가 절대 아니다!\n"
-        "- 월가 기관 투자자는 이를 방만한 고정비 절감, 영업이익률 대폭 개선(Operating Margin Expansion), AI 자동화 집중을 통한 주주가치 극대화 호재로 평가한다.\n"
-        "- 분식회계나 파산 위기가 아닌 우량 대기업의 인력 효율화 뉴스를 기계적으로 부정 평가(감점/HOLD)하지 말고, 수익성 개선 및 턴어라운드 호재 관점에서 분석하라.\n\n"
-        "【HOLD 필수 원칙】:\n"
-        "- 최근 연속 하락도 아니고(consecutive_down_days < 2), 그렇다고 대박 어닝 서프라이즈도 없는 평범한 종목은 무조건 action='HOLD'하라! 아무 종목이나 사지 마라.\n"
-        "- 당일 주가가 이미 +4.0% 이상 급등했거나 RSI가 70 이상 과열된 종목은 무조건 action='HOLD'하라.\n\n"
+        "- 마이크로소프트(MSFT), 메타(META), 크로거(KR) 등 우량 대기업의 '자발적 희망퇴직(Voluntary Buyouts)', '인력 감축', '비용 절감(Cost Discipline)' 뉴스는 영업이익률 대폭 개선 및 주주가치 극대화 호재다!\n\n"
+        "【HOLD 원칙】:\n"
+        "- 특별한 호재 촉매(news_impact_score < 60)도 없고 눌림목 메리트도 없는 평범한 종목이나, 당일 +9.0% 이상 과열 폭등한 종목만 action='HOLD'하라.\n\n"
         "【악재 감지 시 긴급 탈출 SELL】:\n"
         "- 대규모 소송 패소, 회계 부정, 실적 쇼크, 규제 제재 시 즉시 action='SELL', confidence >= 0.75로 전량 탈출하라.\n\n"
         "【BUY 결정 시 가격 기준】:\n"
@@ -790,20 +818,19 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         if signal.action == "BUY":
             signal.position_size_pct = 25.0 # 종목당 약 500만원 고정 배정
 
-        # 1차: 엄선 매수 하드 안전장치 (잡다한 분산 매수 완전 차단)
+        # 1차: 스마트 매수 안전장치 (호재 모멘텀 초입은 즉시 매수 허용!)
         if signal.action == "BUY":
-            # 1. 차트 눌림목도 아니고(하락일수 < 2 & 조정폭 > -2.0%) 강력한 실적 호재(뉴스점수 >= 75)도 아니면 HOLD 강제 전환!
-            is_pullback = (down_days >= 2) or (pullback_pct <= -2.5) or (rsi <= 45.0)
-            is_big_catalyst = (signal.news_impact_score is not None and signal.news_impact_score >= 75)
+            is_pullback = (down_days >= 1) or (pullback_pct <= -1.8) or (rsi <= 52.0)
+            is_catalyst = (signal.news_impact_score is not None and signal.news_impact_score >= 62) or (quant_score >= 68)
 
-            if not is_pullback and not is_big_catalyst:
-                log_ts(f"   🛡️ [엄선 매수 원칙 적용] {ticker} 연속 하락({down_days}일) 및 눌림폭({pullback_pct}%) 미흡 -> 무차별 매수 방지 HOLD 전환")
+            if not is_pullback and not is_catalyst:
+                log_ts(f"   🛡️ [엄선 매수 원칙 적용] {ticker} 눌림목 및 뉴스 촉매({signal.news_impact_score}점) 미흡 -> 관망 HOLD")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
-                signal.reason = f"[엄선 매수 필터] 차트상 연속 하락 눌림목이나 대형 실적 촉매가 없어 분산 매수 방지를 위해 관망 유지. {signal.reason}"
+                signal.reason = f"[엄선 매수 필터] 뚜렷한 호재 촉매나 눌림목 메리트가 부족하여 관망 유지. {signal.reason}"
 
-            # 2. 뉴스 촉매 강도 검증: 치명적 악재가 있을 때 차단
+            # 2. 뉴스 촉매 강도 검증: 악재성 뉴스일 때만 차단
             elif signal.news_impact_score is not None and signal.news_impact_score < 40:
                 log_ts(f"   🛡️ [뉴스 영향도 미달 차단] {ticker} 뉴스 영향도({signal.news_impact_score}점) < 40! -> HOLD 전환")
                 signal.action = "HOLD"
@@ -811,13 +838,13 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
                 signal.position_size_pct = 0.0
                 signal.reason = f"[뉴스 영향도 부족] 뉴스 점수 {signal.news_impact_score}점으로 촉매 부족. {signal.reason}"
 
-            # 3. 선반영(Priced-in) 차단: 주가가 실제로 당일 +4.0% 이상 폭등했을 때만 차익실현 매물받이로 차단!
-            elif pct_change >= 4.0:
-                log_ts(f"   🛡️ [당일 급등 추격매수 차단] {ticker} 변동률 {pct_change:+}%로 이미 급등. 고점 차익실현 위험 -> HOLD 전환")
+            # 3. 과열 폭등 차단: 진짜 과열(+8.5% 이상 폭등)일 때만 차단하고, +1%~+8% 호재 상승 초입은 적극 매수 허용!
+            elif pct_change >= 8.5:
+                log_ts(f"   🛡️ [과열 폭등 추격매수 차단] {ticker} 변동률 {pct_change:+}% 과열 -> HOLD 전환")
                 signal.action = "HOLD"
                 signal.confidence = min(signal.confidence, 0.45)
                 signal.position_size_pct = 0.0
-                signal.reason = f"[당일 급등 추격매수 방지] 당일 주가가 {pct_change:+}% 급등하여 눌림목이 아님. {signal.reason}"
+                signal.reason = f"[과열 급등 추격매수 방지] 당일 주가가 이미 {pct_change:+}% 폭등하여 단기 과열 구간임. {signal.reason}"
 
             # 4. 기술적 극단 과매수 차단 (70 이상)
             elif rsi is not None and rsi >= 70.0:
@@ -1028,7 +1055,7 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
         log_ts(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
 # 10. 실시간 전체 시장 종합 속보 스캐너 (나스닥 & 우량/성장주 유니버스 10개씩 라운드로빈 순환)
-def scan_market_wide_news(batch_size: int = 10):
+def scan_market_wide_news(batch_size: int = 25):
     """나스닥 및 미국 대표 우량/성장주 유니버스 기업의 실시간 헤드라인을 10개씩 라운드로빈 회전하며 24시간 실시간 감시"""
     global current_scan_offset, WATCHLIST_UNIVERSE
     # 매주 월요일 09:00 KST 갱신 주기 자동 체크
@@ -1145,7 +1172,7 @@ def scan_market_wide_news(batch_size: int = 10):
             else:
                 log_ts(f"   ⏸️ [관망 유지] 조건 미달로 주문 미발행 (시장 관망)")
 
-            time.sleep(1) # API 레이트리밋 보호
+            time.sleep(0.15) # 초고속 스캔
         except Exception as e:
             log_ts(f"[{ticker} 스캔 오류] {e}")
 
@@ -1219,7 +1246,7 @@ def fire_sample_sell_signal(target_ticker: str = "AAPL"):
 def main():
     parser = argparse.ArgumentParser(description="나스닥 & 미국 주요 우량/성장주 AI 이벤트 드리븐 트레이딩 워커")
     parser.add_argument("--loop", action="store_true", help="24시간 실시간 무한 모니터링 실행")
-    parser.add_argument("--interval", type=int, default=60, help="모니터링 주기 (초)")
+    parser.add_argument("--interval", type=int, default=20, help="모니터링 주기 (초)")
     parser.add_argument("--test-fire", action="store_true", help="인텔리제이 연동 검증용 샘플 BUY 시그널 즉시 발송")
     parser.add_argument("--test-sell", action="store_true", help="인텔리제이 연동 검증용 긴급 악재 SELL 시그널 즉시 발송")
     parser.add_argument("--ticker", type=str, default="NVDA", help="--test-fire / --test-sell 시 사용할 종목 티커")
