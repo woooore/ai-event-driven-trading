@@ -46,8 +46,9 @@ BASE_TOP100_MASTER: Dict[str, Dict[str, str]] = {
     "CVX": {"name": "셰브론 (Chevron)", "keywords": ["chevron", "cvx"], "exchange": "NYSE", "rank": 26},
     "KO": {"name": "코카콜라 (Coca-Cola)", "keywords": ["coca-cola", "coke"], "exchange": "NYSE", "rank": 27},
     "MRK": {"name": "머크 (Merck)", "keywords": ["merck", "mrk", "keytruda"], "exchange": "NYSE", "rank": 28},
-    "AMD": {"name": "AMD (초우량 반도체)", "keywords": ["amd", "lisa su", "mi300", "ryzen"], "exchange": "NASD", "rank": 29},
-    "PEP": {"name": "펩시코 (PepsiCo)", "keywords": ["pepsico", "pep"], "exchange": "NASD", "rank": 30},
+    "HXSCL": {"name": "SK하이닉스 (SK Hynix ADR)", "keywords": ["sk hynix", "hynix", "hxscl", "hxscf", "hbm", "hbm3e", "hbm4", "kwak noh-jung", "주주환원", "자사주"], "exchange": "NASD", "rank": 29},
+    "AMD": {"name": "AMD (초우량 반도체)", "keywords": ["amd", "lisa su", "mi300", "ryzen"], "exchange": "NASD", "rank": 30},
+    "PEP": {"name": "펩시코 (PepsiCo)", "keywords": ["pepsico", "pep"], "exchange": "NASD", "rank": 31},
 
     # ── [산업재 / 클라우드 / 소프트웨어 Top 31-40] ──
     "LIN": {"name": "린데 (Linde)", "keywords": ["linde", "lin"], "exchange": "NASD", "rank": 31},
@@ -124,8 +125,7 @@ BASE_TOP100_MASTER: Dict[str, Dict[str, str]] = {
     # ── [소프트웨어 / AI 인프라 / 바이오 핵심 Top 91-100] ──
     "ADP": {"name": "ADP (오토매틱 데이터)", "keywords": ["adp"], "exchange": "NASD", "rank": 91},
     "FI": {"name": "파이서브 (Fiserv)", "keywords": ["fiserv", "fi"], "exchange": "NYSE", "rank": 92},
-    "MO": {"name": "알트리아 (Altria)", "keywords": ["altria", "mo"], "exchange": "NYSE", "rank": 93},
-    "SO": {"name": "서던 컴퍼니 (Southern)", "keywords": ["southern company", "so"], "exchange": "NYSE", "rank": 94},
+    "SO": {"name": "서던 컴퍼니 (Southern)", "keywords": ["southern company", "so"], "exchange": "NYSE", "rank": 93},
     "CRWD": {"name": "크라우드스트라이크 (CrowdStrike)", "keywords": ["crowdstrike", "crwd"], "exchange": "NASD", "rank": 95},
     "BMY": {"name": "브리스톨 마이어스 (Bristol Myers)", "keywords": ["bristol myers", "bmy"], "exchange": "NYSE", "rank": 97},
     "GILD": {"name": "길리어드 사이언스 (Gilead)", "keywords": ["gilead", "gild"], "exchange": "NASD", "rank": 98},

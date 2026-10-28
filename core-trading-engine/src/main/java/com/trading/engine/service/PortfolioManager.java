@@ -69,6 +69,7 @@ public class PortfolioManager {
             Map.entry("META", "메타 (Meta)"),
             Map.entry("TSLA", "테슬라 (Tesla)"),
             Map.entry("SPCX", "스페이스X (SpaceX)"),
+            Map.entry("HXSCL", "SK하이닉스 (SK Hynix ADR)"),
             Map.entry("LLY", "일라이 릴리 (Eli Lilly)"),
             Map.entry("AVGO", "브로드컴 (Broadcom)"),
             Map.entry("AMD", "AMD (어드밴스드 마이크로)"),
@@ -191,9 +192,10 @@ public class PortfolioManager {
     }
 
     /**
-     * 포트폴리오 교체 매매 (Capital Rotation)를 위한 부진 종목 탐색
-     * - 수익률 +1.0% 이상인 종목은 추세 추종(Winner) 보호로 절대 매도 금지
-     * - 수익률 +1.0% 미만(손실 중이거나 횡보/부진)인 종목 중 가장 수익률이 낮은 종목 1개 선정
+     * 포트폴리오 교체 매매 (Capital Rotation)를 위한 부진/애매한 종목 탐색
+     * - +2.5% 이상 대형 수익 중인 종목은 목표 익절선 달성을 위해 보호
+     * - 수익률 +2.5% 미만(손실 중이거나 소폭 횡보/애매한 종목) 중 가장 수익률이 낮은 최하위 종목 1개 선정
+     * - 만약 4개 종목이 꽉 차 있을 경우 가장 성과가 낮은 종목을 과감히 교체 매도 대상으로 선정하여 자본 회전
      */
     public synchronized Position findWorstPerformingPositionForSwap() {
         if (positions.isEmpty()) {
@@ -201,7 +203,7 @@ public class PortfolioManager {
         }
 
         Position worst = null;
-        double minProfitRate = 1.0; // 최소 +1.0% 미만인 종목만 교체 대상
+        double minProfitRate = 2.5; // +2.5% 미만의 부진/애매한 종목 중 최하위 종목 선정
 
         for (Position p : positions.values()) {
             double curPrice = p.getCurrentPrice() > 0 ? p.getCurrentPrice() : p.getBuyPrice();
@@ -210,6 +212,16 @@ public class PortfolioManager {
                 minProfitRate = profitRate;
                 worst = p;
             }
+        }
+
+        // 4종목이 꽉 차 있을 경우, 계좌 락(Lock)을 방지하기 위해 가장 덜 오른 종목을 교체 대상으로 선정
+        if (worst == null && positions.size() >= 4) {
+            worst = positions.values().stream()
+                    .min(java.util.Comparator.comparingDouble(p -> {
+                        double curPrice = p.getCurrentPrice() > 0 ? p.getCurrentPrice() : p.getBuyPrice();
+                        return ((curPrice - p.getBuyPrice()) / p.getBuyPrice()) * 100.0;
+                    }))
+                    .orElse(null);
         }
 
         return worst;

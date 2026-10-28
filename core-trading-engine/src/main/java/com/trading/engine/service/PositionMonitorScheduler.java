@@ -77,6 +77,17 @@ public class PositionMonitorScheduler {
                 pos.setHighestPrice(livePrice);
             }
 
+            // 0. 목표 익절선 (+3.0%) 도달 시 즉시 확정 익절 매도! (3% 넘으면 즉시 차익 실현)
+            double targetTakeProfit = pos.getTakeProfitPrice() > 0 ? pos.getTakeProfitPrice() : (pos.getBuyPrice() * (1.0 + defaultTakeProfitRatio));
+            if (livePrice >= targetTakeProfit) {
+                log.info(">> 🎯 [목표 익절선 도달 즉시 청산] {} 현재가 ${} >= 목표가 ${} (달성 수익률: +{:.2f}%)",
+                        ticker, String.format(Locale.US, "%.2f", livePrice),
+                        String.format(Locale.US, "%.2f", targetTakeProfit), profitRate);
+                portfolioManager.sellPosition(ticker, livePrice,
+                        String.format(Locale.US, "목표 익절선 ($%.2f) 돌파 확정 이익 실현 (수익률: +%.2f%%)", targetTakeProfit, profitRate));
+                continue;
+            }
+
             // 1. 트레일링 스탑 활성화 검사 (+2.5% 이상 수익 시 가동 시작)
             if (!pos.isTrailingStopActive() && livePrice >= pos.getBuyPrice() * (1.0 + trailingActivationRatio)) {
                 pos.setTrailingStopActive(true);
