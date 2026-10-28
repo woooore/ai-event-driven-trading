@@ -66,8 +66,7 @@ services:
       SIMULATION_MODE: "true"
       JAVA_TOOL_OPTIONS: "-Xmx384M -Xms128M"
     volumes:
-      - ./portfolio_state_backup.json:/app/portfolio_state_backup.json
-      - ./earnings_events.json:/app/earnings_events.json
+      - engine-storage:/app/storage
     restart: always
     networks:
       - trading-net
@@ -86,3 +85,7 @@ services:
     restart: always
     networks:
       - trading-net
+
+volumes:
+  redis-data:
+  engine-storage:

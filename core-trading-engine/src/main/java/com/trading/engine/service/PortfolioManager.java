@@ -107,6 +107,17 @@ public class PortfolioManager {
                     String.format(Locale.US, "%,.2f", initialCashUsd));
             log.info("==================================================");
         }
+
+        // 비정상 데이터 유실(보유 종목 0개인데 잔고가 10% 미만으로 증발한 상태) 방어 가드
+        if (positions.isEmpty() && currentCashUsd < (initialCashUsd * 0.1)) {
+            log.warn(">> ⚠️ [비정상 데이터 유실 감지] 보유 종목 0개에 잔여 현금이 ${}뿐임. 초기 자본 ₩{} (${})으로 자동 자가 복원합니다.",
+                    String.format(Locale.US, "%.2f", currentCashUsd),
+                    String.format(Locale.KOREA, "%,.0f", initialCapitalKrw),
+                    String.format(Locale.US, "%.2f", initialCashUsd));
+            this.currentCashUsd = this.initialCashUsd;
+            this.cumulativeRealizedPnlUsd = 0.0;
+            persistState();
+        }
     }
 
     /**
@@ -338,6 +349,7 @@ public class PortfolioManager {
             } catch (Exception ignored) {}
         }
         try {
+            Files.deleteIfExists(getBackupPath());
             Files.deleteIfExists(Path.of("portfolio_state_backup.json"));
         } catch (Exception ignored) {}
 
@@ -350,6 +362,18 @@ public class PortfolioManager {
     /**
      * 포트폴리오 상태 영구 보존 (Redis 및 로컬 파일 2중 백업)
      */
+    private Path getBackupPath() {
+        Path storageDir = Path.of("storage");
+        try {
+            if (!Files.exists(storageDir)) {
+                Files.createDirectories(storageDir);
+            }
+            return storageDir.resolve("portfolio_state_backup.json");
+        } catch (Exception e) {
+            return Path.of("portfolio_state_backup.json");
+        }
+    }
+
     public synchronized void persistState() {
         try {
             Map<String, Object> state = new HashMap<>();
@@ -370,7 +394,7 @@ public class PortfolioManager {
             }
 
             try {
-                Files.writeString(Path.of("portfolio_state_backup.json"), json, StandardCharsets.UTF_8);
+                Files.writeString(getBackupPath(), json, StandardCharsets.UTF_8);
             } catch (Exception ignored) {}
 
         } catch (Exception e) {
@@ -396,10 +420,12 @@ public class PortfolioManager {
                 }
             }
 
-            Path backupPath = Path.of("portfolio_state_backup.json");
-            if ((json == null || json.isBlank()) && Files.exists(backupPath)) {
+            Path pStorage = Path.of("storage/portfolio_state_backup.json");
+            Path pRoot = Path.of("portfolio_state_backup.json");
+            Path backupPath = (Files.exists(pStorage) && Files.isRegularFile(pStorage)) ? pStorage : pRoot;
+            if ((json == null || json.isBlank()) && Files.exists(backupPath) && Files.isRegularFile(backupPath)) {
                 json = Files.readString(backupPath, StandardCharsets.UTF_8);
-                log.info(">> [로컬 파일] 영구 보존된 이전 포트폴리오 백업 파일 발견");
+                log.info(">> [로컬 파일] 영구 보존된 이전 포트폴리오 백업 파일 발견 ({})", backupPath);
             }
 
             if (json != null && !json.isBlank()) {
