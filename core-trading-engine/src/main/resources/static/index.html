@@ -7,6 +7,8 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>AI Event-Driven US Stock Trading | 실시간 가상 포트폴리오</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1572,6 +1574,311 @@
       color: #cbd5e1;
       line-height: 1.5;
     }
+
+    /* UPCOMING EARNINGS & DETAIL MODAL STYLES */
+    .upcoming-wrapper {
+      background: linear-gradient(135deg, rgba(30, 27, 75, 0.6), rgba(15, 23, 42, 0.8));
+      border: 1px solid rgba(129, 140, 248, 0.25);
+      border-radius: 16px;
+      padding: 20px 22px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(12px);
+    }
+
+    .upcoming-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .upcoming-title-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .upcoming-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #e0e7ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .upcoming-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 14px;
+    }
+
+    .upcoming-card {
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upcoming-card:hover {
+      border-color: rgba(129, 140, 248, 0.45);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.15);
+    }
+
+    .upcoming-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dday-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dday-urgent {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(244, 63, 94, 0.3));
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+      animation: pulse 1.8s infinite;
+    }
+
+    .dday-soon {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.3));
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #fcd34d;
+    }
+
+    .dday-normal {
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+    }
+
+    .timing-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .upcoming-consensus-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 12px;
+    }
+
+    .consensus-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .consensus-val {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .upcoming-watchpoint {
+      font-size: 11.5px;
+      color: #cbd5e1;
+      line-height: 1.45;
+      background: rgba(99, 102, 241, 0.06);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border-left: 2px solid var(--accent-indigo);
+    }
+
+    /* EARNINGS CARD CLICKABLE */
+    .earnings-card {
+      cursor: pointer;
+    }
+
+    .earnings-card:hover {
+      border-color: #6366f1 !important;
+      transform: translateY(-3px) !important;
+    }
+
+    .btn-view-detail {
+      margin-top: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      color: #c7d2fe;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-view-detail:hover {
+      background: rgba(99, 102, 241, 0.3);
+      color: #ffffff;
+      border-color: #818cf8;
+    }
+
+    /* DETAIL MODAL STYLES */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(2, 6, 23, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .modal-box {
+      background: #0f172a;
+      border: 1px solid rgba(129, 140, 248, 0.3);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 35px rgba(99, 102, 241, 0.2);
+      display: flex;
+      flex-direction: column;
+      animation: zoomIn 0.25s ease-out;
+    }
+
+    @keyframes zoomIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 22px 26px 18px 26px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .modal-body {
+      padding: 24px 26px 28px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .modal-fact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .modal-fact-card {
+      background: rgba(17, 24, 39, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .modal-fact-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-fact-main {
+      font-size: 18px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: #ffffff;
+    }
+
+    .modal-fact-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .modal-section-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .modal-info-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
   </style>
 </head>
 <body>
@@ -2052,6 +2359,21 @@
         </div>
       </div>
 
+
+      <!-- ⏰ UPCOMING 2-WEEKS EARNINGS PREVIEW SECTION -->
+      <div class="upcoming-wrapper">
+        <div class="upcoming-header">
+          <div class="upcoming-title-box">
+            <span class="upcoming-title">⏰ 향후 2주 이내 실적 발표 예정 (Upcoming Earnings D-Day)</span>
+            <span class="badge" style="background: rgba(99, 102, 241, 0.25); color: #c7d2fe; font-size: 11px;">한국 시간 KST 기준 실시간 카운트다운</span>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">미국 시총 Top 100 메가캡 집중 감시</span>
+        </div>
+        <div id="upcoming-earnings-grid" class="upcoming-grid">
+          <!-- UPCOMING CARDS DYNAMIC LOAD -->
+        </div>
+      </div>
+
       <!-- KPI METRIC CARDS -->
       <div class="earnings-kpi-grid">
         <div class="earnings-kpi-card">
@@ -2110,6 +2432,85 @@
         <div class="empty-state-icon">📊</div>
         <p style="font-size: 15px; font-weight: 700; color: #f3f4f6;">등록된 실적 발표 이벤트가 없습니다.</p>
         <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Top 100 기업의 분기 실적 발표 또는 가이던스 공시가 감지되면 자동으로 피드가 갱신됩니다.</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 🔍 EARNINGS DETAIL MODAL POPUP -->
+  <div id="earnings-detail-modal" class="modal-overlay" style="display: none;" onclick="closeEarningsModalOnBackdrop(event)">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span id="modal-ticker-badge" class="ticker-badge" style="font-size: 13px; padding: 4px 10px;">AAPL</span>
+            <span id="modal-stock-name" style="font-size: 18px; font-weight: 800; color: #ffffff;">애플 (Apple)</span>
+            <span id="modal-quarter-badge" class="badge" style="background: rgba(255, 255, 255, 0.08); font-family: var(--font-mono);">2026 Q3</span>
+            <span id="modal-type-badge" class="earnings-type-badge type-surprise">🚀 어닝 서프라이즈</span>
+          </div>
+          <div id="modal-time-kst" style="font-size: 12px; color: #38bdf8; font-family: var(--font-mono); margin-top: 6px; font-weight: 600;">
+            🕒 공식 발표 시각: 2026-10-28 20:12:00 (KST 한국시간)
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeEarningsModal()" title="닫기">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- 원본 헤드라인 -->
+        <div>
+          <div class="modal-section-title">📰 공식 실적 헤드라인</div>
+          <div id="modal-headline" class="modal-info-box" style="font-size: 14.5px; font-weight: 700; color: #f8fafc; border-left: 3px solid #38bdf8;">
+            -
+          </div>
+        </div>
+
+        <!-- 2x2 팩트시트 (EPS / 매출) -->
+        <div>
+          <div class="modal-section-title">📈 핵심 실적 팩트시트 (컨센서스 vs 실제 발표치)</div>
+          <div class="modal-fact-grid">
+            <div class="modal-fact-card">
+              <div class="modal-fact-label">
+                <span>주당순이익 (EPS)</span>
+                <span id="modal-eps-beat-badge" style="color: #34d399; font-family: var(--font-mono); font-size: 11px;">BEAT</span>
+              </div>
+              <div id="modal-eps-actual" class="modal-fact-main">$0.00</div>
+              <div id="modal-eps-est" class="modal-fact-sub">시장 예상치: $0.00</div>
+            </div>
+
+            <div class="modal-fact-card">
+              <div class="modal-fact-label">
+                <span>매출 (Revenue)</span>
+                <span id="modal-rev-beat-badge" style="color: #60a5fa; font-family: var(--font-mono); font-size: 11px;">YoY 성장</span>
+              </div>
+              <div id="modal-rev-actual" class="modal-fact-main">$0억 달러</div>
+              <div id="modal-rev-est" class="modal-fact-sub">시장 예상치: $0억 달러</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 가이던스 내용 -->
+        <div>
+          <div class="modal-section-title">🎯 향후 가이던스 및 전망</div>
+          <div id="modal-guidance" class="modal-info-box" style="color: #67e8f9; font-weight: 600;">
+            -
+          </div>
+        </div>
+
+        <!-- 핵심 호실적/쇼크 원인 -->
+        <div>
+          <div class="modal-section-title">🚀 핵심 성장/변동 요인 분석</div>
+          <div id="modal-key-drivers" class="modal-info-box">
+            -
+          </div>
+        </div>
+
+        <!-- AI 실적 분석 총평 -->
+        <div>
+          <div class="modal-section-title">🤖 AI 퀀트 심층 총평 & 시장 반응</div>
+          <div id="modal-ai-summary" class="modal-info-box" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: #e0e7ff;">
+            -
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -3276,6 +3677,8 @@
     // ==========================================
     let currentEarningsFilter = 'ALL';
 
+    let currentEarningsItems = [];
+
     function filterEarnings(filter) {
       currentEarningsFilter = filter;
       const chips = {
@@ -3288,6 +3691,70 @@
         if (chips[k]) chips[k].classList.toggle('active', k === filter);
       });
       fetchEarnings(filter);
+    }
+
+    async function fetchUpcomingEarnings() {
+      try {
+        const res = await fetch('/api/earnings/upcoming');
+        if (!res.ok) return;
+        const items = await res.json();
+        renderUpcomingEarnings(items);
+      } catch (err) {
+        console.error('실적 예정 데이터 패치 실패:', err);
+      }
+    }
+
+    function renderUpcomingEarnings(items) {
+      const grid = document.getElementById('upcoming-earnings-grid');
+      if (!grid) return;
+      items = items || [];
+      if (items.length === 0) {
+        grid.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; padding: 10px;">향후 2주 이내 예정된 실적이 없습니다.</div>';
+        return;
+      }
+
+      grid.innerHTML = items.map(u => {
+        let ddayClass = 'dday-normal';
+        if (u.dDayNumber <= 1) ddayClass = 'dday-urgent';
+        else if (u.dDayNumber <= 3) ddayClass = 'dday-soon';
+
+        return `
+          <div class="upcoming-card">
+            <div class="upcoming-top-row">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="ticker-badge">${u.ticker}</span>
+                <span style="font-size: 15px; font-weight: 700; color: #ffffff;">${getStockDisplayName(u.ticker, u.stockName)}</span>
+              </div>
+              <span class="dday-badge ${ddayClass}">🔥 ${u.dDay}</span>
+            </div>
+
+            <div style="font-size: 11.5px; color: #38bdf8; font-family: var(--font-mono); font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+              <span>🕒 ${u.expectedDate} ${u.expectedTimeKst}</span>
+              <span class="timing-badge">${u.marketTiming}</span>
+            </div>
+
+            <div class="upcoming-consensus-box">
+              <div class="consensus-row">
+                <span style="color: var(--text-muted);">예상 EPS:</span>
+                <span class="consensus-val" style="color: #67e8f9;">${u.epsConsensus || '-'}</span>
+              </div>
+              <div class="consensus-row">
+                <span style="color: var(--text-muted);">예상 매출:</span>
+                <span class="consensus-val" style="color: #cbd5e1;">${u.revenueConsensus || '-'}</span>
+              </div>
+              <div class="consensus-row">
+                <span style="color: var(--text-muted);">내재 변동성:</span>
+                <span class="consensus-val" style="color: #f43f5e;">${u.impliedVolatility || '±5.0%'}</span>
+              </div>
+            </div>
+
+            <div class="upcoming-watchpoint">
+              <span style="font-weight: 700; color: #a5b4fc;">관전 포인트: </span>
+              ${u.keyWatchPoints || '-'}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     async function fetchEarnings(filter) {
@@ -3310,25 +3777,28 @@
         if (!res.ok) return;
         const items = await res.json();
         renderEarnings(items);
+
+        // 3. 향후 2주 이내 실적 예정 동시 조회
+        fetchUpcomingEarnings();
       } catch (err) {
         console.error('실적 데이터 패치 실패:', err);
       }
     }
 
     function renderEarnings(items) {
+      currentEarningsItems = items || [];
       const grid = document.getElementById('earnings-grid');
       const emptyEl = document.getElementById('earnings-empty-state');
       if (!grid) return;
 
-      items = items || [];
-      if (items.length === 0) {
+      if (currentEarningsItems.length === 0) {
         grid.innerHTML = '';
         if (emptyEl) emptyEl.style.display = 'block';
         return;
       }
       if (emptyEl) emptyEl.style.display = 'none';
 
-      grid.innerHTML = items.map(e => {
+      grid.innerHTML = currentEarningsItems.map(e => {
         let typeBadgeClass = 'type-regular';
         let typeIcon = '📑';
         if (e.eventType === '어닝 서프라이즈') {
@@ -3347,7 +3817,7 @@
         const impactClass = impact >= 0 ? 'profit-positive' : 'profit-negative';
 
         return `
-          <div class="earnings-card">
+          <div class="earnings-card" onclick="openEarningsModal('${e.id}')" title="클릭하여 상세 팩트시트 및 AI 분석 보기">
             <div class="earnings-card-header">
               <div class="earnings-company-info">
                 <span class="ticker-badge">${e.ticker}</span>
@@ -3359,8 +3829,8 @@
                 <div class="${impactClass}" style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">
                   당일 변동 ${impactSign}${impact.toFixed(2)}%
                 </div>
-                <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
-                  ${e.date || ''} ${e.time || ''}
+                <div style="font-size: 11.5px; color: #38bdf8; font-family: var(--font-mono); margin-top: 2px; font-weight: 600;">
+                  🕒 발표 시각: ${e.date || ''} ${e.time || ''} (KST 한국시간)
                 </div>
               </div>
             </div>
@@ -3384,10 +3854,77 @@
               <span style="font-weight: 700; color: #a5b4fc;">🤖 AI 실적 분석 총평: </span>
               ${e.aiSummary || '실적 및 가이던스 주요 수치가 업데이트되었습니다.'}
             </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+              <span class="btn-view-detail">🔍 상세 팩트시트 & AI 총평 보기</span>
+            </div>
           </div>
         `;
       }).join('');
     }
+
+    // 모달 오픈 함수
+    function openEarningsModal(id) {
+      const e = currentEarningsItems.find(item => item.id === id);
+      if (!e) return;
+
+      document.getElementById('modal-ticker-badge').textContent = e.ticker;
+      document.getElementById('modal-stock-name').textContent = getStockDisplayName(e.ticker, e.stockName);
+      document.getElementById('modal-quarter-badge').textContent = e.quarter || '2026 Q3';
+      
+      const typeBadge = document.getElementById('modal-type-badge');
+      let typeBadgeClass = 'type-regular';
+      let typeIcon = '📑';
+      if (e.eventType === '어닝 서프라이즈') {
+        typeBadgeClass = 'type-surprise';
+        typeIcon = '🚀';
+      } else if (e.eventType === '가이던스 상향') {
+        typeBadgeClass = 'type-guidance';
+        typeIcon = '💎';
+      } else if (e.eventType === '어닝 쇼크') {
+        typeBadgeClass = 'type-shock';
+        typeIcon = '⚠️';
+      }
+      typeBadge.className = `earnings-type-badge ${typeBadgeClass}`;
+      typeBadge.textContent = `${typeIcon} ${e.eventType || '실적 공시'}`;
+
+      document.getElementById('modal-time-kst').textContent = `🕒 공식 발표 시각: ${e.date || ''} ${e.time || ''} (KST 한국시간)`;
+      document.getElementById('modal-headline').textContent = e.headline || '-';
+
+      // 팩트시트
+      document.getElementById('modal-eps-actual').textContent = e.detailEpsActual || e.epsSummary || '-';
+      document.getElementById('modal-eps-est').textContent = `시장 예상치: ${e.detailEpsEstimate || '컨센서스 부합'}`;
+      document.getElementById('modal-eps-beat-badge').textContent = e.detailEpsSurprise || (e.eventType === '어닝 서프라이즈' ? 'BEAT' : 'CONSENSUS');
+
+      document.getElementById('modal-rev-actual').textContent = e.detailRevActual || e.revenueSummary || '-';
+      document.getElementById('modal-rev-est').textContent = `시장 예상치: ${e.detailRevEstimate || '컨센서스 부합'}`;
+      document.getElementById('modal-rev-beat-badge').textContent = e.detailRevGrowthYoY || '+YoY';
+
+      document.getElementById('modal-guidance').textContent = e.detailGuidance || e.revenueSummary || '향후 가이던스 안정적 유지';
+      document.getElementById('modal-key-drivers').textContent = e.detailKeyDrivers || e.aiSummary || '주요 사업부 실적 성장 견인';
+      document.getElementById('modal-ai-summary').textContent = (e.aiSummary || '') + (e.detailMarketReaction ? `\n\n📌 시장 반응 & 수급: ${e.detailMarketReaction}` : '');
+
+      const modal = document.getElementById('earnings-detail-modal');
+      if (modal) modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeEarningsModal() {
+      const modal = document.getElementById('earnings-detail-modal');
+      if (modal) modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    function closeEarningsModalOnBackdrop(event) {
+      if (event.target && event.target.id === 'earnings-detail-modal') {
+        closeEarningsModal();
+      }
+    }
+
+    // ESC 키로 모달 닫기
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeEarningsModal();
+    });
 
     // 초기 로딩: 대시보드, AI 브리핑, 실시간 분석 로그, 실적 이벤트 즉시 로드
     fetchDashboard();

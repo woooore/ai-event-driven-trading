@@ -1,6 +1,7 @@
 package com.trading.engine.controller;
 
 import com.trading.engine.dto.EarningsEventDto;
+import com.trading.engine.dto.UpcomingEarningsDto;
 import com.trading.engine.service.EarningsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,14 @@ public class EarningsRestController {
     @GetMapping("/summary")
     public ResponseEntity<Map<String, Object>> getSummary() {
         return ResponseEntity.ok(earningsService.getSummary());
+    }
+
+    /**
+     * ⏰ 향후 2주 이내 실적 발표 예정 리스트 (D-Day 순)
+     */
+    @GetMapping("/upcoming")
+    public ResponseEntity<List<UpcomingEarningsDto>> getUpcomingEarnings() {
+        return ResponseEntity.ok(earningsService.getUpcomingEarnings());
     }
 
     /**
