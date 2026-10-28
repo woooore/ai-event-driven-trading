@@ -1845,24 +1845,23 @@
     }
 
     .modal-fact-main {
-      font-size: 18px;
+      font-size: 15.5px;
       font-weight: 800;
-      font-family: var(--font-mono);
       color: #ffffff;
+      line-height: 1.45;
+      word-break: keep-all;
     }
 
     .modal-fact-sub {
-      font-size: 12px;
-      color: var(--text-secondary);
-      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: #94a3b8;
+      margin-top: 2px;
     }
 
     .modal-section-title {
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 800;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      color: #a5b4fc;
       margin-bottom: 8px;
       display: flex;
       align-items: center;
@@ -1870,13 +1869,105 @@
     }
 
     .modal-info-box {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
       padding: 14px 16px;
+      font-size: 13.5px;
+      color: #e2e8f0;
+      line-height: 1.7;
+      white-space: pre-line;
+      word-break: keep-all;
+    }
+
+    /* 기업 검색바 및 원클릭 기업 필터 칩 */
+    .log-search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      border-radius: 10px;
+      padding: 6px 12px;
+      min-width: 290px;
+      flex: 1;
+      max-width: 460px;
+      transition: all 0.2s ease;
+    }
+
+    .log-search-box:focus-within {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .log-search-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
       font-size: 13px;
+      width: 100%;
+    }
+
+    .log-search-input::placeholder {
+      color: #64748b;
+    }
+
+    .log-search-clear {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .log-search-clear:hover {
+      background: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+    }
+
+    .log-company-chips-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      background: rgba(17, 24, 39, 0.65);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .company-filter-chip {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       color: #cbd5e1;
-      line-height: 1.6;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .company-filter-chip:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(129, 140, 248, 0.5);
+      color: #ffffff;
+    }
+
+    .company-filter-chip.active {
+      background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(14, 165, 233, 0.35);
     }
 
   </style>
@@ -2294,37 +2385,51 @@
       </div>
     </div>
 
-    <!-- TAB 3: 🔍 실시간 AI 종목 감지 로그 (일자별) -->
+    <!-- TAB 3: 🔍 실시간 AI 종목 감지 로그 (일자별 + 기업 검색) -->
     <div id="tab-pane-logs" style="display: none;">
       <div class="analysis-log-wrapper">
-        <div class="log-filter-bar">
-          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <span style="font-size: 15px; font-weight: 700; color: #f3f4f6;">📅 분석 일자 선택:</span>
-            <select id="log-date-select" class="range-btn" style="padding: 7px 14px; font-size: 13px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid var(--border-color); border-radius: 8px;" onchange="loadAnalysisLogs(this.value)">
+        <div class="log-filter-bar" style="gap: 14px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="font-size: 14px; font-weight: 700; color: #f3f4f6;">📅 일자:</span>
+            <select id="log-date-select" class="range-btn" style="padding: 7px 12px; font-size: 13px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid var(--border-color); border-radius: 8px;" onchange="loadAnalysisLogs(this.value)">
               <!-- 동적 날짜 옵션 -->
             </select>
           </div>
+
+          <!-- 🔍 기업명 / 티커 검색창 -->
+          <div class="log-search-box">
+            <span>🔍</span>
+            <input type="text" id="log-company-search" class="log-search-input" placeholder="기업명 또는 티커 검색 (예: 테슬라, TSLA, 하이닉스, 엔비디아...)" oninput="onLogCompanySearch(this.value)">
+            <button class="log-search-clear" onclick="clearLogCompanySearch()" title="검색어 초기화">✕ 전체보기</button>
+          </div>
+
           <div style="display: flex; gap: 10px; align-items: center;">
-            <span class="badge badge-live">실시간 동기화 중</span>
+            <span class="badge badge-live">실시간 영구 보존 중</span>
             <button class="btn-chart-search" style="padding: 7px 16px; font-size: 12px; background: var(--accent-indigo); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;" onclick="loadAnalysisLogs()">🔄 새로고침</button>
           </div>
         </div>
 
+        <!-- ⚡ 감지된 기업 원클릭 빠른 선택 칩 -->
+        <div class="log-company-chips-bar" id="log-company-chips">
+          <span style="font-size: 12px; font-weight: 700; color: #94a3b8; margin-right: 4px;">🏢 기업별 모아보기:</span>
+          <!-- 동적 기업 필터 칩 -->
+        </div>
+
         <div class="log-kpi-bar">
-          <div class="log-kpi-card">
-            <div class="log-kpi-card-label">총 분석 스캔 건수</div>
+          <div class="log-kpi-card" style="cursor: pointer;" onclick="filterLogsByAction('ALL')" title="클릭하여 전체 로그 보기">
+            <div class="log-kpi-card-label">총 분석 스캔 건수 (전체보기)</div>
             <div class="log-kpi-card-val" id="log-kpi-total" style="color: #67e8f9;">0건</div>
           </div>
-          <div class="log-kpi-card">
-            <div class="log-kpi-card-label">매수 적격 (BUY)</div>
+          <div class="log-kpi-card" style="cursor: pointer;" onclick="filterLogsByAction('BUY')" title="클릭하여 매수 적격(BUY)만 보기">
+            <div class="log-kpi-card-label">🟢 매수 적격 (BUY)</div>
             <div class="log-kpi-card-val" id="log-kpi-buy" style="color: var(--accent-green);">0건</div>
           </div>
-          <div class="log-kpi-card">
-            <div class="log-kpi-card-label">신중 관망 (HOLD)</div>
+          <div class="log-kpi-card" style="cursor: pointer;" onclick="filterLogsByAction('HOLD')" title="클릭하여 신중 관망(HOLD)만 보기">
+            <div class="log-kpi-card-label">⏸️ 신중 관망 (HOLD)</div>
             <div class="log-kpi-card-val" id="log-kpi-hold" style="color: var(--accent-amber);">0건</div>
           </div>
-          <div class="log-kpi-card">
-            <div class="log-kpi-card-label">악재 감지 (SELL)</div>
+          <div class="log-kpi-card" style="cursor: pointer;" onclick="filterLogsByAction('SELL')" title="클릭하여 악재 감지(SELL)만 보기">
+            <div class="log-kpi-card-label">🚨 악재 감지 (SELL)</div>
             <div class="log-kpi-card-val" id="log-kpi-sell" style="color: var(--accent-red);">0건</div>
           </div>
         </div>
@@ -2456,49 +2561,49 @@
       </div>
 
       <div class="modal-body">
-        <!-- 원본 헤드라인 -->
+        <!-- 한글 실적 발표 제목 -->
         <div>
-          <div class="modal-section-title">📰 공식 실적 헤드라인</div>
-          <div id="modal-headline" class="modal-info-box" style="font-size: 14.5px; font-weight: 700; color: #f8fafc; border-left: 3px solid #38bdf8;">
+          <div class="modal-section-title">📰 공식 실적 발표 핵심 요약</div>
+          <div id="modal-headline" class="modal-info-box" style="font-size: 15px; font-weight: 800; color: #f8fafc; border-left: 3px solid #38bdf8;">
             -
           </div>
         </div>
 
-        <!-- 2x2 팩트시트 (EPS / 매출) -->
+        <!-- 분기별 실적 팩트시트 (EPS / 매출 상승률) -->
         <div>
-          <div class="modal-section-title">📈 핵심 실적 팩트시트 (컨센서스 vs 실제 발표치)</div>
+          <div class="modal-section-title">📊 분기별 실적 상승률 & 컨센서스 비교 (전년동기 YoY · 전분기 QoQ)</div>
           <div class="modal-fact-grid">
             <div class="modal-fact-card">
               <div class="modal-fact-label">
-                <span>주당순이익 (EPS)</span>
-                <span id="modal-eps-beat-badge" style="color: #34d399; font-family: var(--font-mono); font-size: 11px;">BEAT</span>
+                <span>💰 주당순이익 (EPS) 실적</span>
+                <span id="modal-eps-beat-badge" style="color: #34d399; font-weight: 700; font-size: 11.5px;">컨센서스 상회</span>
               </div>
-              <div id="modal-eps-actual" class="modal-fact-main">$0.00</div>
-              <div id="modal-eps-est" class="modal-fact-sub">시장 예상치: $0.00</div>
+              <div id="modal-eps-actual" class="modal-fact-main">-</div>
+              <div id="modal-eps-est" class="modal-fact-sub">시장 예상치: -</div>
             </div>
 
             <div class="modal-fact-card">
               <div class="modal-fact-label">
-                <span>매출 (Revenue)</span>
-                <span id="modal-rev-beat-badge" style="color: #60a5fa; font-family: var(--font-mono); font-size: 11px;">YoY 성장</span>
+                <span>📈 분기 매출액 & 성장률</span>
+                <span id="modal-rev-beat-badge" style="color: #60a5fa; font-weight: 700; font-size: 11.5px;">분기 성장률</span>
               </div>
-              <div id="modal-rev-actual" class="modal-fact-main">$0억 달러</div>
-              <div id="modal-rev-est" class="modal-fact-sub">시장 예상치: $0억 달러</div>
+              <div id="modal-rev-actual" class="modal-fact-main">-</div>
+              <div id="modal-rev-est" class="modal-fact-sub">시장 예상치: -</div>
             </div>
           </div>
         </div>
 
-        <!-- 가이던스 내용 -->
+        <!-- 향후 가이던스 -->
         <div>
-          <div class="modal-section-title">🎯 향후 가이던스 및 전망</div>
-          <div id="modal-guidance" class="modal-info-box" style="color: #67e8f9; font-weight: 600;">
+          <div class="modal-section-title">🎯 향후 가이던스 (차기 분기 및 연간 목표치)</div>
+          <div id="modal-guidance" class="modal-info-box" style="color: #67e8f9; font-weight: 600; background: rgba(6, 182, 212, 0.06); border-color: rgba(6, 182, 212, 0.25);">
             -
           </div>
         </div>
 
-        <!-- 핵심 호실적/쇼크 원인 -->
+        <!-- 주요 발표 내용 및 분기 성장 동력 -->
         <div>
-          <div class="modal-section-title">🚀 핵심 성장/변동 요인 분석</div>
+          <div class="modal-section-title">📢 주요 발표 내용 & 분기별 성장 요인 정리</div>
           <div id="modal-key-drivers" class="modal-info-box">
             -
           </div>
@@ -2506,7 +2611,7 @@
 
         <!-- AI 실적 분석 총평 -->
         <div>
-          <div class="modal-section-title">🤖 AI 퀀트 심층 총평 & 시장 반응</div>
+          <div class="modal-section-title">🤖 AI 퀀트 심층 총평 & 시장 수급 반응</div>
           <div id="modal-ai-summary" class="modal-info-box" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: #e0e7ff;">
             -
           </div>
@@ -3548,12 +3653,45 @@
     // ==========================================
     // 🔍 실시간 AI 종목 감지 로그 엔진 (웹에서 워커 로그 일자별 확인)
     // ==========================================
-    let currentLogDate = '';
+    let currentLogDate = 'ALL';
     let availableLogDates = [];
+    let currentLogKeyword = '';
+    let currentLogAction = 'ALL';
+    let allFetchedLogsCache = [];
+
+    function onLogCompanySearch(val) {
+      currentLogKeyword = (val || '').trim();
+      applyLogFiltersAndRender();
+    }
+
+    function clearLogCompanySearch() {
+      currentLogKeyword = '';
+      currentLogAction = 'ALL';
+      const inputEl = document.getElementById('log-company-search');
+      if (inputEl) inputEl.value = '';
+      applyLogFiltersAndRender();
+    }
+
+    function selectCompanyChip(ticker) {
+      if (ticker === 'ALL') {
+        currentLogKeyword = '';
+        const inputEl = document.getElementById('log-company-search');
+        if (inputEl) inputEl.value = '';
+      } else {
+        currentLogKeyword = ticker;
+        const inputEl = document.getElementById('log-company-search');
+        if (inputEl) inputEl.value = getStockDisplayName(ticker, ticker);
+      }
+      applyLogFiltersAndRender();
+    }
+
+    function filterLogsByAction(action) {
+      currentLogAction = action || 'ALL';
+      applyLogFiltersAndRender();
+    }
 
     async function loadAnalysisLogs(targetDate) {
       try {
-        // 가용 날짜 목록 로드
         const datesRes = await fetch('/api/analysis-logs/dates');
         if (datesRes.ok) {
           availableLogDates = await datesRes.json();
@@ -3561,7 +3699,7 @@
         }
 
         if (!targetDate) {
-          targetDate = currentLogDate || (availableLogDates.length > 0 ? availableLogDates[0] : new Date().toISOString().substring(0, 10));
+          targetDate = currentLogDate || 'ALL';
         }
         currentLogDate = targetDate;
         const selectEl = document.getElementById('log-date-select');
@@ -3570,7 +3708,20 @@
         const res = await fetch(`/api/analysis-logs?date=${encodeURIComponent(targetDate)}`);
         if (!res.ok) return;
         const logs = await res.json();
-        renderAnalysisLogs(logs);
+
+        // 중복 제거 후 캐시 저장
+        const seen = new Set();
+        const uniqueLogs = [];
+        (logs || []).forEach(l => {
+          const key = (l.id ? l.id : '') + '|' + (l.ticker || '') + '|' + (l.time || '') + '|' + (l.headline || '');
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniqueLogs.push(l);
+          }
+        });
+        allFetchedLogsCache = uniqueLogs;
+        renderCompanyFilterChips(allFetchedLogsCache);
+        applyLogFiltersAndRender();
       } catch (err) {
         console.error('분석 로그 로드 실패:', err);
       }
@@ -3579,8 +3730,63 @@
     function updateLogDateSelectOptions() {
       const selectEl = document.getElementById('log-date-select');
       if (!selectEl) return;
-      const cur = selectEl.value || currentLogDate;
-      selectEl.innerHTML = availableLogDates.map(d => `<option value="${d}" ${d === cur ? 'selected' : ''}>📅 ${d}</option>`).join('');
+      const cur = currentLogDate || 'ALL';
+      const allOpt = `<option value="ALL" ${cur === 'ALL' ? 'selected' : ''}>🔥 전체 일자 통합 (${availableLogDates.length}일)</option>`;
+      const dateOpts = availableLogDates.map(d => `<option value="${d}" ${d === cur ? 'selected' : ''}>📅 ${d}</option>`).join('');
+      selectEl.innerHTML = allOpt + dateOpts;
+    }
+
+    function renderCompanyFilterChips(logs) {
+      const bar = document.getElementById('log-company-chips');
+      if (!bar) return;
+
+      const counts = {};
+      (logs || []).forEach(l => {
+        if (!l.ticker) return;
+        const tk = l.ticker.toUpperCase();
+        counts[tk] = (counts[tk] || 0) + 1;
+      });
+
+      const sortedTickers = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+      const isAllActive = !currentLogKeyword;
+
+      let html = `<span style="font-size: 12px; font-weight: 700; color: #94a3b8; margin-right: 4px;">🏢 기업별 모아보기:</span>`;
+      html += `<button class="company-filter-chip ${isAllActive ? 'active' : ''}" onclick="selectCompanyChip('ALL')">전체 기업 (${logs.length})</button>`;
+
+      sortedTickers.slice(0, 18).forEach(tk => {
+        const displayName = getStockDisplayName(tk, tk);
+        const shortKor = displayName.split(' (')[0];
+        const isActive = currentLogKeyword && (
+          currentLogKeyword.toUpperCase() === tk ||
+          displayName.toLowerCase().includes(currentLogKeyword.toLowerCase())
+        );
+        html += `<button class="company-filter-chip ${isActive ? 'active' : ''}" onclick="selectCompanyChip('${tk}')">${shortKor} <span style="opacity:0.75; font-family:var(--font-mono);">${tk}</span> (${counts[tk]})</button>`;
+      });
+
+      bar.innerHTML = html;
+    }
+
+    function applyLogFiltersAndRender() {
+      const kw = (currentLogKeyword || '').trim().toLowerCase();
+      const act = (currentLogAction || 'ALL').toUpperCase();
+
+      const filtered = allFetchedLogsCache.filter(l => {
+        if (act !== 'ALL' && (l.action || '').toUpperCase() !== act) {
+          return false;
+        }
+        if (kw) {
+          const tk = (l.ticker || '').toLowerCase();
+          const sn = (l.stock_name || l.stockName || '').toLowerCase();
+          const disp = getStockDisplayName(l.ticker, l.stock_name || l.stockName).toLowerCase();
+          if (!tk.includes(kw) && !sn.includes(kw) && !disp.includes(kw)) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      renderCompanyFilterChips(allFetchedLogsCache);
+      renderAnalysisLogs(filtered);
     }
 
     function renderAnalysisLogs(logs) {
@@ -3589,19 +3795,7 @@
       const badgeCount = document.getElementById('log-count-badge');
       if (!feedEl) return;
 
-      // 클라이언트 사이드 중복 방지 (동일 ID 또는 티커+시간+헤드라인)
-      const seen = new Set();
-      const uniqueLogs = [];
-      (logs || []).forEach(l => {
-        const key = (l.id ? l.id : '') + '|' + (l.ticker || '') + '|' + (l.time || '') + '|' + (l.headline || '');
-        if (!seen.has(key)) {
-          seen.add(key);
-          uniqueLogs.push(l);
-        }
-      });
-      logs = uniqueLogs;
-
-      if (badgeCount) badgeCount.textContent = `${logs.length}건`;
+      if (badgeCount) badgeCount.textContent = `${allFetchedLogsCache.length}건`;
 
       // KPI 카운트 집계
       let buyCount = 0;
@@ -3816,14 +4010,15 @@
         const impactSign = impact >= 0 ? '+' : '';
         const impactClass = impact >= 0 ? 'profit-positive' : 'profit-negative';
 
+        const korType = (e.eventType === 'Earnings Release' || e.eventType === 'Earnings Call' || !e.eventType) ? '실적 발표' : e.eventType;
         return `
-          <div class="earnings-card" onclick="openEarningsModal('${e.id}')" title="클릭하여 상세 팩트시트 및 AI 분석 보기">
+          <div class="earnings-card" onclick="openEarningsModal('${e.id}')" title="클릭하여 분기별 실적 상승률·가이던스·주요 발표 상세 보기">
             <div class="earnings-card-header">
               <div class="earnings-company-info">
                 <span class="ticker-badge">${e.ticker}</span>
                 <span style="font-size: 16px; font-weight: 700; color: #ffffff;">${getStockDisplayName(e.ticker, e.stockName)}</span>
-                <span class="badge" style="background: rgba(255, 255, 255, 0.06); font-family: var(--font-mono); font-size: 11px;">${e.quarter || '2026 Q3'}</span>
-                <span class="earnings-type-badge ${typeBadgeClass}">${typeIcon} ${e.eventType || '실적 공시'}</span>
+                <span class="badge" style="background: rgba(255, 255, 255, 0.06); font-size: 11px;">${e.quarter || '2026년 3분기'}</span>
+                <span class="earnings-type-badge ${typeBadgeClass}">${typeIcon} ${korType}</span>
               </div>
               <div style="text-align: right;">
                 <div class="${impactClass}" style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">
@@ -3835,19 +4030,26 @@
               </div>
             </div>
 
-            <div class="earnings-headline">📰 ${e.headline || '기업 공시 및 실적 보고서'}</div>
+            <div class="earnings-headline">📰 ${e.headline || '기업 공식 분기 실적 및 가이던스 리포트'}</div>
 
             <div class="earnings-fact-box">
               <div class="earnings-fact-row">
                 <span class="fact-icon">💰</span>
-                <span class="fact-label">EPS:</span>
+                <span class="fact-label">분기 EPS:</span>
                 <span class="fact-value">${e.epsSummary || '-'}</span>
               </div>
               <div class="earnings-fact-row">
                 <span class="fact-icon">📊</span>
-                <span class="fact-label">매출/가이던스:</span>
+                <span class="fact-label">매출·성장률:</span>
                 <span class="fact-value">${e.revenueSummary || '-'}</span>
               </div>
+              ${e.detailGuidance ? `
+              <div class="earnings-fact-row">
+                <span class="fact-icon">🎯</span>
+                <span class="fact-label">가이던스:</span>
+                <span class="fact-value" style="color: #67e8f9;">${e.detailGuidance}</span>
+              </div>
+              ` : ''}
             </div>
 
             <div class="earnings-ai-comment">
@@ -3856,7 +4058,7 @@
             </div>
 
             <div style="display: flex; justify-content: flex-end;">
-              <span class="btn-view-detail">🔍 상세 팩트시트 & AI 총평 보기</span>
+              <span class="btn-view-detail">🔍 분기별 상승률 · 가이던스 · 주요 발표 상세보기</span>
             </div>
           </div>
         `;
@@ -3885,8 +4087,9 @@
         typeBadgeClass = 'type-shock';
         typeIcon = '⚠️';
       }
+      const korModalType = (e.eventType === 'Earnings Release' || e.eventType === 'Earnings Call' || !e.eventType) ? '실적 발표' : e.eventType;
       typeBadge.className = `earnings-type-badge ${typeBadgeClass}`;
-      typeBadge.textContent = `${typeIcon} ${e.eventType || '실적 공시'}`;
+      typeBadge.textContent = `${typeIcon} ${korModalType}`;
 
       document.getElementById('modal-time-kst').textContent = `🕒 공식 발표 시각: ${e.date || ''} ${e.time || ''} (KST 한국시간)`;
       document.getElementById('modal-headline').textContent = e.headline || '-';

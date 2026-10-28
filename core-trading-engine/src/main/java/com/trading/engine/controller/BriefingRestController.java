@@ -48,11 +48,14 @@ public class BriefingRestController {
     }
 
     /**
-     * 종목별 실시간 AI 감지/판단 로그 조회 (날짜별)
+     * 종목별 실시간 AI 감지/판단 로그 조회 (날짜별 + 기업 검색 키워드 + 액션 필터)
      */
     @GetMapping("/analysis-logs")
-    public ResponseEntity<List<AnalysisLogDto>> getAnalysisLogs(@RequestParam(required = false) String date) {
-        return ResponseEntity.ok(analysisLogService.getLogsByDate(date));
+    public ResponseEntity<List<AnalysisLogDto>> getAnalysisLogs(
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String action) {
+        return ResponseEntity.ok(analysisLogService.getLogsFiltered(date, keyword, action));
     }
 
     /**

@@ -8,7 +8,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -23,7 +29,13 @@ public class MarketBriefingService {
 
     private final ObjectMapper objectMapper;
     private final List<MarketBriefingDto> briefings = new CopyOnWriteArrayList<>();
+
+    @Autowired(required = false)
+    private RedissonClient redissonClient;
+
+    private static final String BRIEFING_STORAGE_FILE = "storage/market_briefings.json";
     private static final String BRIEFING_FILE = "market_briefings.json";
+    private static final String REDIS_KEY = "briefings:persisted_data";
     private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     @PostConstruct
@@ -143,13 +155,41 @@ public class MarketBriefingService {
     }
 
     private void loadFromFile() {
-        File file = new File(BRIEFING_FILE);
-        if (file.exists() && file.length() > 0) {
+        try {
+            Path dir = Path.of("storage");
+            if (!Files.exists(dir)) Files.createDirectories(dir);
+        } catch (Exception ignored) {}
+
+        if (redissonClient != null) {
+            try {
+                RBucket<String> bucket = redissonClient.getBucket(REDIS_KEY);
+                if (bucket.isExists()) {
+                    String json = bucket.get();
+                    if (json != null && !json.isBlank()) {
+                        List<MarketBriefingDto> loaded = objectMapper.readValue(json, new TypeReference<>() {});
+                        if (loaded != null && !loaded.isEmpty()) {
+                            briefings.clear();
+                            briefings.addAll(loaded);
+                            log.info(">> [AI 브리핑] Redis에서 브리핑 {}건 복원 완료", briefings.size());
+                            return;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Redis 브리핑 복원 실패: {}", e.getMessage());
+            }
+        }
+
+        File storageFile = new File(BRIEFING_STORAGE_FILE);
+        File legacyFile = new File(BRIEFING_FILE);
+        File file = (storageFile.exists() && storageFile.isFile() && storageFile.length() > 0) ? storageFile :
+                    ((legacyFile.exists() && legacyFile.isFile() && legacyFile.length() > 0) ? legacyFile : null);
+        if (file != null) {
             try {
                 List<MarketBriefingDto> loaded = objectMapper.readValue(file, new TypeReference<>() {});
                 briefings.clear();
                 briefings.addAll(loaded);
-                log.info(">> [AI 브리핑] 저장된 브리핑 {}건 로드 완료", briefings.size());
+                log.info(">> [AI 브리핑] 로컬 파일({})에서 브리핑 {}건 로드 완료", file.getPath(), briefings.size());
             } catch (Exception e) {
                 log.error("AI 브리핑 파일 로드 실패: {}", e.getMessage());
             }
@@ -158,7 +198,15 @@ public class MarketBriefingService {
 
     private void saveToFile() {
         try {
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(BRIEFING_FILE), briefings);
+            Path dir = Path.of("storage");
+            if (!Files.exists(dir)) Files.createDirectories(dir);
+            String json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(briefings);
+            Files.writeString(Path.of(BRIEFING_STORAGE_FILE), json);
+            if (redissonClient != null) {
+                try {
+                    redissonClient.getBucket(REDIS_KEY).set(json);
+                } catch (Exception ignored) {}
+            }
         } catch (Exception e) {
             log.error("AI 브리핑 파일 저장 실패: {}", e.getMessage());
         }

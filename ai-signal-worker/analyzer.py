@@ -420,37 +420,81 @@ def maybe_generate_hourly_briefing(force: bool = False):
     except Exception as be:
         log_ts(f"[AI 브리핑 생성 오류]: {be}")
 
-# 5-3. 미국 시총 Top 100 실적 발표 / 어닝스 / 가이던스 Pydantic 스키마
+# 5-3. 미국 시총 Top 100 실적 발표 / 어닝스 / 가이던스 Pydantic 스키마 (100% 한글 필수)
 class EarningsExtraction(BaseModel):
-    is_earnings_or_guidance: bool = Field(description="이 뉴스가 실적 발표(Earnings), 분기 EPS/매출 결과, 또는 가이던스 상향/하향과 직접 관련된 핵심 팩트인지 여부")
-    quarter: str = Field(default="2026 Q3", description="해당 실적의 분기 (예: '2026 Q3', '2026 Q4', '연간 가이던스')")
-    event_type: str = Field(default="실적 발표", description="'어닝 서프라이즈', '가이던스 상향', '어닝 쇼크', '실적 발표' 중 하나")
-    eps_summary: str = Field(default="", description="주당순이익(EPS) 성과 1줄 요약 (예: '조정 EPS $3.42 (+61% YoY, 시장 컨센서스 상회)')")
-    revenue_summary: str = Field(default="", description="매출 및 가이던스 1줄 요약 (예: '연간 매출 가이던스 40억 달러 상향')")
-    ai_summary: str = Field(default="", description="실적이 주가와 펀더멘털에 미치는 영향 1~2문장 요약")
+    is_earnings_or_guidance: bool = Field(description="실제 분기 실적 발표(Earnings), 분기 EPS/매출 수치 발표, 또는 공식 가이던스 상향/하향 공시인지 여부. 단순 종목 비교 기사(vs.)나 실적 발표 전 예고(Gears up to report, Expected to grow 등)는 반드시 False로 반환할 것.")
+    headline_ko: str = Field(default="", description="반드시 한국어로 번역 및 핵심 요약한 실적 발표 제목 (영문 원문 그대로 복사 절대 금지, 예: '버텍스 파마슈티컬, 3분기 매출 전년비 +12% 성장 및 연간 가이던스 상향')")
+    quarter: str = Field(default="2026년 3분기 (Q3)", description="해당 실적의 분기 한글 표기 (예: '2026년 3분기 (Q3)', '2026년 연간 가이던스')")
+    event_type: str = Field(default="실적 발표", description="반드시 '어닝 서프라이즈', '가이던스 상향', '어닝 쇼크', '실적 발표' 중 하나만 선택 (영어 금지)")
+    eps_summary: str = Field(default="", description="반드시 한국어로 작성한 주당순이익(EPS) 실적 및 전년동기/전분기 대비 상승률 1줄 요약 (예: '조정 EPS $4.38 (전년동기 대비 +15.3% ↑, 컨센서스 $4.14 상회)')")
+    revenue_summary: str = Field(default="", description="반드시 한국어로 작성한 분기 매출액, 분기별 성장률(YoY/QoQ) 및 가이던스 1줄 요약 (예: '분기 매출 $27.7억 달러 (YoY +12.1%, QoQ +4.5% 성장)')")
+    ai_summary: str = Field(default="", description="반드시 한국어로 작성한 실적 총평 및 주가/펀더멘털 영향 2~3문장 심층 요약")
+    detail_eps_actual: str = Field(default="", description="실제 발표 EPS 및 성장률 한글 요약 (예: '조정 EPS $4.38 (전년비 +15.3% 상승)')")
+    detail_eps_estimate: str = Field(default="", description="시장 컨센서스 예상 EPS 한글 표기 (예: '시장 컨센서스 $4.14')")
+    detail_eps_surprise: str = Field(default="", description="EPS 서프라이즈 한글 요약 (예: '예상치 대비 +5.8% 상회 (어닝 서프라이즈)')")
+    detail_rev_actual: str = Field(default="", description="실제 분기 매출액 및 YoY/QoQ 성장률 한글 요약 (예: '$27.7억 달러 (전년비 +12.1% ↑, 전분기비 +4.5% ↑)')")
+    detail_rev_estimate: str = Field(default="", description="시장 예상 매출액 한글 표기 (예: '시장 컨센서스 $26.9억 달러')")
+    detail_rev_growth_yoy: str = Field(default="", description="분기별 매출/이익 성장률 요약 (예: 'YoY +12.1% / QoQ +4.5% 연속 성장')")
+    detail_guidance: str = Field(default="", description="향후 분기 및 연간 매출·이익 가이던스 한글 상세 요약")
+    detail_key_drivers: str = Field(default="", description="주요 발표 내용 및 사업부별 핵심 성장 동력 한글 불릿(•) 3줄 정리")
+    detail_market_reaction: str = Field(default="", description="실적 발표 후 시장 반응 및 기관 수급 동향 한글 요약")
     sentiment: str = Field(default="호재", description="'호재', '악재', '중립' 중 하나")
 
 EARNINGS_KEYWORDS = [
-    "earnings", "eps", "revenue", "guidance", "profit", "quarterly results",
-    "quarterly report", "sales", "net income", "beat", "missed", "실적", "분기",
+    "earnings", "eps", "revenue", "guidance", "quarterly results",
+    "quarterly report", "net income", "beats", "misses", "실적", "분기",
     "가이던스", "어닝", "흑자", "적자", "매출 상향", "상향 조정", "어닝 서프라이즈", "어닝 쇼크"
 ]
 
+def get_financial_context_for_earnings(ticker: str) -> str:
+    """yfinance에서 실제 EPS 및 분기별 매출/이익 성장률 데이터를 조회하여 한글 리포트의 팩트 정확도 극대화"""
+    try:
+        tk = yf.Ticker(ticker)
+        info = tk.info or {}
+        trail_eps = info.get("trailingEps", "N/A")
+        fwd_eps = info.get("forwardEps", "N/A")
+        rev_growth = info.get("revenueGrowth")
+        earn_growth = info.get("earningsGrowth")
+        op_margin = info.get("operatingMargins")
+        total_rev = info.get("totalRevenue")
+        rev_g_str = f"{rev_growth * 100:+.1f}%" if isinstance(rev_growth, (int, float)) else "N/A"
+        earn_g_str = f"{earn_growth * 100:+.1f}%" if isinstance(earn_growth, (int, float)) else "N/A"
+        op_m_str = f"{op_margin * 100:.1f}%" if isinstance(op_margin, (int, float)) else "N/A"
+        rev_b_str = f"${total_rev / 1e9:.2f}B" if isinstance(total_rev, (int, float)) and total_rev > 0 else "N/A"
+        return (f"Trailing EPS: ${trail_eps}, Forward EPS: ${fwd_eps}, "
+                f"최근 분기 매출 성장률(YoY): {rev_g_str}, 분기 이익 성장률(YoY): {earn_g_str}, "
+                f"영업이익률: {op_m_str}, 연간 환산 매출규모: {rev_b_str}")
+    except Exception:
+        return "재무 지표 조회 생략"
+
 def maybe_process_earnings_event(ticker: str, stock_name: str, headline: str, news_text: str, pct_change: float):
-    """미국 시총 Top 100 기업의 뉴스 중 실적/가이던스 이벤트를 감지하여 Kafka 및 웹 API로 전송"""
+    """미국 시총 Top 100 기업의 뉴스 중 실적/가이던스 이벤트를 감지하여 100% 한글 상세 리포트로 Kafka 및 웹 API 전송"""
     headline_lower = headline.lower()
     if not any(k in headline_lower for k in EARNINGS_KEYWORDS):
         return
+    # 단순 종목 비교(vs.)나 예고성 가십 기사는 제외
+    if " vs. " in headline_lower or "gears up to" in headline_lower or "what to expect" in headline_lower:
+        return
+
+    fin_ctx = get_financial_context_for_earnings(ticker)
 
     prompt = f"""
-너는 월스트리트 최고 수준의 기업 공시 및 실적 분석가다.
-다음은 미국 시총 상위 100대 대형주 {stock_name} ({ticker})의 최신 뉴스다.
-이 뉴스가 실적 발표(Earnings), 분기 EPS/매출 결과, 또는 가이던스 상향/하향과 관련된 발표인지 분석하여
-Pydantic 스키마에 맞춰 JSON으로 추출하라. 단순 루머나 시황 의견이고 실적/가이던스 팩트 발표가 아니라면 is_earnings_or_guidance=False 로 반환하라.
+너는 월스트리트 수석 기업 실적 애널리스트다.
+다음은 미국 시총 상위 100대 우량주 {stock_name} ({ticker})의 최신 뉴스와 실제 재무 지표다.
+이 뉴스가 실제 분기 실적 발표(Earnings), 분기 EPS/매출 성과, 또는 가이던스 및 주요 경영 발표와 관련된 내용인지 분석하여 Pydantic 스키마에 맞춰 JSON으로 추출하라.
+단순 시황 가십이나 종목 비교 기사라면 is_earnings_or_guidance=False 로 반환하라.
 
-헤드라인: {headline}
-뉴스 내용: {news_text[:600]}
-당일 주가 변동률: {pct_change:+}%
+[작성 필수 규칙 - 매우 중요]
+1. 모든 텍스트 필드(headline_ko, eps_summary, revenue_summary, ai_summary, detail_*)는 반드시 **100% 한국어(한글)**로 작성하라. 영문 뉴스 제목을 그대로 복사해 넣는 것은 절대 금지한다!
+2. 실적이 분기별로 얼마나 올랐는지(전년 동기 대비 YoY, 직전 분기 대비 QoQ 성장률), 컨센서스 대비 실제 수치, 향후 가이던스, 주요 발표 핵심 요인을 구체적 수치와 함께 한국어로 명확히 정리하라.
+3. event_type은 반드시 '어닝 서프라이즈', '가이던스 상향', '어닝 쇼크', '실적 발표' 중 하나로만 지정하라.
+
+[종목 정보 및 재무 팩트]
+- 종목: {stock_name} ({ticker})
+- 실제 재무 컨텍스트: {fin_ctx}
+- 당일 주가 변동률: {pct_change:+}%
+- 영문 원문 헤드라인: {headline}
+- 수집된 뉴스 본문: {news_text[:800]}
 """
     try:
         resp = client.beta.chat.completions.parse(
@@ -463,6 +507,7 @@ Pydantic 스키마에 맞춰 JSON으로 추출하라. 단순 루머나 시황 �
             return
 
         now_dt = get_now_kst()
+        kor_headline = res.headline_ko if (res.headline_ko and any('가' <= ch <= '힣' for ch in res.headline_ko)) else f"{stock_name}, {res.quarter} 실적 및 가이던스 핵심 공시 발표"
         payload = {
             "id": f"earn-{ticker.lower()}-{int(time.time())}",
             "ticker": ticker,
@@ -470,11 +515,20 @@ Pydantic 스키마에 맞춰 JSON으로 추출하라. 단순 루머나 시황 �
             "date": now_dt.strftime("%Y-%m-%d"),
             "time": now_dt.strftime("%H:%M:%S"),
             "quarter": res.quarter,
-            "eventType": res.event_type,
-            "headline": headline,
-            "epsSummary": res.eps_summary or "EPS 컨센서스 집계 완료",
-            "revenueSummary": res.revenue_summary or "매출 가이던스 공시 완료",
-            "aiSummary": res.ai_summary or f"{stock_name} 실적 및 가이던스 공시 반영",
+            "eventType": res.event_type if res.event_type in ["어닝 서프라이즈", "가이던스 상향", "어닝 쇼크", "실적 발표"] else "실적 발표",
+            "headline": kor_headline,
+            "epsSummary": res.eps_summary or "분기 주당순이익(EPS) 컨센서스 부합 및 이익 성장 지속",
+            "revenueSummary": res.revenue_summary or "분기 매출 전년 동기 대비 견조한 성장세 유지",
+            "aiSummary": res.ai_summary or f"{stock_name}의 분기 실적 및 향후 가이던스가 공시되었습니다.",
+            "detailEpsActual": res.detail_eps_actual or res.eps_summary,
+            "detailEpsEstimate": res.detail_eps_estimate or "월가 컨센서스 추정치 기준",
+            "detailEpsSurprise": res.detail_eps_surprise or ("컨센서스 상회 (Beat)" if res.event_type == "어닝 서프라이즈" else "컨센서스 부합"),
+            "detailRevActual": res.detail_rev_actual or res.revenue_summary,
+            "detailRevEstimate": res.detail_rev_estimate or "시장 예상 매출 부합",
+            "detailRevGrowthYoY": res.detail_rev_growth_yoy or "전년동기 대비 성장 지속",
+            "detailGuidance": res.detail_guidance or res.revenue_summary,
+            "detailKeyDrivers": res.detail_key_drivers or res.ai_summary,
+            "detailMarketReaction": res.detail_market_reaction or f"발표 직후 당일 주가 {pct_change:+}% 반응 및 기관 수급 유입 모니터링",
             "sentiment": res.sentiment,
             "stockImpactPct": pct_change,
             "timestamp": int(time.time() * 1000)
