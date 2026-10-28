@@ -432,6 +432,18 @@ public class PortfolioManager {
                         String.format(Locale.US, "%,.2f", currentCashUsd),
                         String.format(Locale.US, "%,.2f", cumulativeRealizedPnlUsd));
                 log.info("==================================================");
+
+                // 만약 보유 종목이 0개인데 잔여 현금이 100만원($750) 미만으로 쪼그라든 비정상 유실 상태라면
+                if (positions.isEmpty() && currentCashUsd < (initialCashUsd * 0.1)) {
+                    log.warn(">> ⚠️ [비정상 데이터 유실 감지] 보유 종목 0개에 잔여 현금이 ${}뿐임. 초기 자본 ₩{} (${})으로 자동 자가 복원합니다.",
+                            String.format(Locale.US, "%.2f", currentCashUsd),
+                            String.format(Locale.KOREA, "%,.0f", initialCapitalKrw),
+                            String.format(Locale.US, "%.2f", initialCashUsd));
+                    this.currentCashUsd = this.initialCashUsd;
+                    this.cumulativeRealizedPnlUsd = 0.0;
+                    persistState();
+                }
+
                 return true;
             }
         } catch (Exception e) {
