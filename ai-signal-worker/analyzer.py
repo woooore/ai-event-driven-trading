@@ -509,17 +509,110 @@ EQUITY_MOAT_MASTER: Dict[str, dict] = {
     "HXSCL": {"tier": "A-Tier", "roe": 32.0, "fcf_margin": "25%", "cash_status": "HBM3E 독점 영업이익 및 FCF 50% 주주환원", "bonus": 8}
 }
 
+# 기업별 최신 재무제표 실시간 캐시 (24시간 보관 후 최신 분기 공시 데이터로 재동기화)
+DYNAMIC_EQUITY_CACHE: Dict[str, dict] = {}
+
 def get_equity_strength_profile(ticker: Optional[str] = None) -> dict:
-    tk = ticker.upper() if ticker else ""
-    if tk in EQUITY_MOAT_MASTER:
-        return EQUITY_MOAT_MASTER[tk]
-    return {
+    """
+    기업의 실제 분기 실적 발표 및 공시 재무제표(yfinance)를 실시간 조회하여
+    최신 자기자본(Equity), ROE, 잉여현금흐름(FCF), 순현금 여부를 자동으로 판정 및 갱신합니다.
+    """
+    if not ticker:
+        return {"tier": "B-Tier", "roe": 15.0, "cash_status": "일반 재무 수준", "bonus": 3}
+
+    tk = ticker.upper()
+    now_ts = time.time()
+
+    # 1. 최근 24시간 이내 캐시 확인
+    if tk in DYNAMIC_EQUITY_CACHE:
+        cached = DYNAMIC_EQUITY_CACHE[tk]
+        if (now_ts - cached.get("cached_at", 0)) < 86400:
+            return cached
+
+    # 2. Redis 캐시 확인
+    if redis_client is not None:
+        try:
+            r_val = redis_client.get(f"equity:profile:{tk}")
+            if r_val:
+                loaded = json.loads(r_val)
+                DYNAMIC_EQUITY_CACHE[tk] = loaded
+                return loaded
+        except Exception:
+            pass
+
+    # 3. 실제 yfinance 최신 공시 재무제표(10-Q/10-K 및 최신 실적 수치) 실시간 조회
+    base_prof = EQUITY_MOAT_MASTER.get(tk, {
         "tier": "B-Tier",
         "roe": 15.0,
         "fcf_margin": "10%",
-        "cash_status": "일반 상장사 표준 재무 수준",
+        "cash_status": "일반 상장사 재무 수준",
         "bonus": 3
-    }
+    })
+
+    try:
+        t = yf.Ticker(tk)
+        info = t.info or {}
+        fast = getattr(t, 'fast_info', None)
+
+        raw_roe = info.get("returnOnEquity")
+        raw_fcf = info.get("freeCashflow")
+        raw_cash = info.get("totalCash")
+        raw_debt = info.get("totalDebt")
+        raw_rev = info.get("totalRevenue")
+        raw_margin = info.get("operatingMargins")
+
+        live_roe = round(float(raw_roe) * 100.0, 1) if isinstance(raw_roe, (int, float)) else base_prof.get("roe", 15.0)
+        has_net_cash = False
+        if isinstance(raw_cash, (int, float)) and isinstance(raw_debt, (int, float)):
+            has_net_cash = (raw_cash > raw_debt)
+        elif tk in ["GOOGL", "NVDA", "AAPL", "MSFT", "META", "ISRG", "PLTR"]:
+            has_net_cash = True
+
+        fcf_b = round(float(raw_fcf) / 1e9, 1) if isinstance(raw_fcf, (int, float)) and raw_fcf > 0 else None
+        cash_b = round(float(raw_cash) / 1e9, 1) if isinstance(raw_cash, (int, float)) and raw_cash > 0 else None
+
+        # 동적 티어 판정 (최신 재무제표 기준)
+        tier = "B-Tier"
+        bonus = 3
+        cash_desc = "표준 재무 수준"
+
+        if live_roe >= 25.0 or (has_net_cash and live_roe >= 20.0) or (fcf_b and fcf_b >= 20.0):
+            tier = "S-Tier"
+            bonus = 10
+            net_str = f"순현금 ${cash_b}B 보유" if (has_net_cash and cash_b) else "무차입급 순현금 체력"
+            fcf_str = f"연간 FCF ${fcf_b}B" if fcf_b else "강력한 잉여현금흐름"
+            cash_desc = f"최신 공시 ROE {live_roe:.1f}% 달성, {net_str} 및 {fcf_str}"
+        elif live_roe >= 16.0 or has_net_cash or (fcf_b and fcf_b >= 3.0):
+            tier = "A-Tier"
+            bonus = 7
+            cash_desc = f"최신 공시 ROE {live_roe:.1f}%, 안정적 잉여현금흐름 및 자본 건전성 충족"
+        else:
+            tier = "B-Tier"
+            bonus = 3
+            cash_desc = f"최신 공시 ROE {live_roe:.1f}%, 일반 제조업/성장주 평균 재무 구조"
+
+        result = {
+            "tier": tier,
+            "roe": live_roe,
+            "fcf_b": fcf_b,
+            "cash_b": cash_b,
+            "has_net_cash": has_net_cash,
+            "cash_status": cash_desc,
+            "bonus": bonus,
+            "cached_at": now_ts
+        }
+
+        DYNAMIC_EQUITY_CACHE[tk] = result
+        if redis_client is not None:
+            try:
+                redis_client.setex(f"equity:profile:{tk}", 86400, json.dumps(result, ensure_ascii=False))
+            except Exception:
+                pass
+        return result
+
+    except Exception as e:
+        DYNAMIC_EQUITY_CACHE[tk] = base_prof
+        return base_prof
 
 # 4. 월가 헤지펀드 & 로보어드바이저 퀀트 기술적 지표 종합 계산기
 def calculate_quant_indicators(hist, ticker: Optional[str] = None) -> dict:
