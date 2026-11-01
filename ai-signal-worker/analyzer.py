@@ -477,8 +477,52 @@ def record_trade_journal(ticker: str, headline: str, summary: str, ai_reason: st
     except Exception as e:
         print(f"[매매 일지 저장 오류]: {e}")
 
+# 4-2. 빅테크 자기자본(순자산) 및 잉여현금흐름(FCF) 재무 건전성 팩터 마스터
+EQUITY_MOAT_MASTER: Dict[str, dict] = {
+    "MSFT": {"tier": "S-Tier", "roe": 38.5, "fcf_margin": "31%", "cash_status": "풍부한 순현금 및 연간 FCF $700억+", "bonus": 10},
+    "AAPL": {"tier": "S-Tier", "roe": 147.2, "fcf_margin": "28%", "cash_status": "연간 FCF $1,000억+ 및 압도적 자사주 소각", "bonus": 10},
+    "NVDA": {"tier": "S-Tier", "roe": 115.4, "fcf_margin": "52%", "cash_status": "무차입 순현금 급증 및 독점 영업이익률", "bonus": 10},
+    "GOOGL": {"tier": "S-Tier", "roe": 31.2, "fcf_margin": "27%", "cash_status": "순현금 $900억+ 무차입에 준하는 재무건전성", "bonus": 10},
+    "META": {"tier": "S-Tier", "roe": 34.0, "fcf_margin": "35%", "cash_status": "순현금 $500억+ 및 FCF 마진 최상위", "bonus": 10},
+    "AMZN": {"tier": "S-Tier", "roe": 22.1, "fcf_margin": "14%", "cash_status": "연간 영업현금흐름 1위 ($1,100억+)", "bonus": 9},
+    "BRK.B": {"tier": "S-Tier", "roe": 16.5, "fcf_margin": "N/A", "cash_status": "현금성 자산 $3,000억+ 역대 최대 보유", "bonus": 10},
+    "LLY": {"tier": "S-Tier", "roe": 62.8, "fcf_margin": "24%", "cash_status": "신약 마운자로 독점 현금 창출력", "bonus": 9},
+    "AVGO": {"tier": "S-Tier", "roe": 28.5, "fcf_margin": "44%", "cash_status": "AI 가속기 초고마진 현금 창출", "bonus": 9},
+    "TSM": {"tier": "S-Tier", "roe": 30.2, "fcf_margin": "33%", "cash_status": "선단공정 100% 가동률 순현금 우량주", "bonus": 9},
+    "V": {"tier": "S-Tier", "roe": 48.0, "fcf_margin": "58%", "cash_status": "영업이익률 60% 독점 결제 네트워크", "bonus": 9},
+    "MA": {"tier": "S-Tier", "roe": 160.0, "fcf_margin": "52%", "cash_status": "극단적 자본 효율성 및 무차입 결제망", "bonus": 9},
+    "COST": {"tier": "A-Tier", "roe": 31.0, "fcf_margin": "8%", "cash_status": "무차입 구조 및 연회비 현금 선수수", "bonus": 8},
+    "ORCL": {"tier": "A-Tier", "roe": 35.0, "fcf_margin": "22%", "cash_status": "클라우드 OCI 고마진 수주 잔고", "bonus": 7},
+    "CRM": {"tier": "A-Tier", "roe": 18.0, "fcf_margin": "32%", "cash_status": "구독형 SaaS 막대한 잉여현금흐름", "bonus": 7},
+    "ISRG": {"tier": "A-Tier", "roe": 16.0, "fcf_margin": "28%", "cash_status": "부채 제로급 무차입 현금 부자", "bonus": 8},
+    "NOW": {"tier": "A-Tier", "roe": 19.5, "fcf_margin": "33%", "cash_status": "연간 갱신율 98% 현금 마진 우수", "bonus": 7},
+    "AXP": {"tier": "A-Tier", "roe": 33.0, "fcf_margin": "N/A", "cash_status": "고소득 프리미엄 카드 연회비 수익", "bonus": 7},
+    "SPGI": {"tier": "A-Tier", "roe": 22.0, "fcf_margin": "38%", "cash_status": "신용평가 독점 마진 및 인덱스 수수료", "bonus": 8},
+    "PLTR": {"tier": "A-Tier", "roe": 15.0, "fcf_margin": "38%", "cash_status": "부채 제로 및 순현금 $40억 달러 보유", "bonus": 8},
+    "QCOM": {"tier": "A-Tier", "roe": 45.0, "fcf_margin": "31%", "cash_status": "특허 라이선스 및 모바일 AP 현금원", "bonus": 8},
+    "TXN": {"tier": "A-Tier", "roe": 25.0, "fcf_margin": "25%", "cash_status": "300mm 팹 FCF 장기 주주환원", "bonus": 7},
+    "AMAT": {"tier": "A-Tier", "roe": 42.0, "fcf_margin": "28%", "cash_status": "반도체 장비 1위 높은 순현금", "bonus": 8},
+    "KLAC": {"tier": "A-Tier", "roe": 70.0, "fcf_margin": "34%", "cash_status": "웨이퍼 검사 장비 독점 현금 창출", "bonus": 8},
+    "LRCX": {"tier": "A-Tier", "roe": 55.0, "fcf_margin": "30%", "cash_status": "식각 장비 1위 탄탄한 자기자본", "bonus": 8},
+    "INTU": {"tier": "A-Tier", "roe": 19.0, "fcf_margin": "28%", "cash_status": "세무 소프트웨어 독점 현금 흐름", "bonus": 7},
+    "PANW": {"tier": "A-Tier", "roe": 22.0, "fcf_margin": "37%", "cash_status": "차세대 사이버보안 순현금 부자", "bonus": 7},
+    "HXSCL": {"tier": "A-Tier", "roe": 32.0, "fcf_margin": "25%", "cash_status": "HBM3E 독점 영업이익 및 FCF 50% 주주환원", "bonus": 8}
+}
+
+def get_equity_strength_profile(ticker: Optional[str] = None) -> dict:
+    tk = ticker.upper() if ticker else ""
+    if tk in EQUITY_MOAT_MASTER:
+        return EQUITY_MOAT_MASTER[tk]
+    return {
+        "tier": "B-Tier",
+        "roe": 15.0,
+        "fcf_margin": "10%",
+        "cash_status": "일반 상장사 표준 재무 수준",
+        "bonus": 3
+    }
+
 # 4. 월가 헤지펀드 & 로보어드바이저 퀀트 기술적 지표 종합 계산기
-def calculate_quant_indicators(hist) -> dict:
+def calculate_quant_indicators(hist, ticker: Optional[str] = None) -> dict:
     default_res = {
         'rsi': 50.0,
         'ma_disparity': 100.0,
@@ -610,6 +654,10 @@ def calculate_quant_indicators(hist) -> dict:
         elif pullback_pct <= -3.5:
             score += 10
 
+        # 자기자본(순자산) 및 잉여현금흐름(FCF) 해자 가산점 (S-Tier +10점, A-Tier +7~8점)
+        eq_prof = get_equity_strength_profile(ticker)
+        score += eq_prof.get("bonus", 3)
+
         final_quant_score = max(0, min(100, score))
 
         return {
@@ -624,6 +672,9 @@ def calculate_quant_indicators(hist) -> dict:
             'consecutive_down_days': down_days,
             'pullback_pct': pullback_pct,
             'quant_score': final_quant_score,
+            'equity_tier': eq_prof.get("tier", "B-Tier"),
+            'roe': eq_prof.get("roe", 15.0),
+            'cash_status': eq_prof.get("cash_status", ""),
             'dynamic_take_profit': dynamic_tp,
             'dynamic_stop_loss': dynamic_sl
         }
@@ -655,6 +706,8 @@ class StockSignal(BaseModel):
     consecutive_down_days: Optional[int] = Field(default=0)
     pullback_pct: Optional[float] = Field(default=0.0)
     quant_score: Optional[int] = Field(default=None)
+    equity_tier: Optional[str] = Field(default="B-Tier", description="자기자본 및 잉여현금흐름 건전성 등급: S-Tier, A-Tier, B-Tier")
+    roe: Optional[float] = Field(default=None, description="자기자본이익률 ROE (%)")
 
 class MarketBriefingItem(BaseModel):
     time: str = Field(description="1시간 단위 시각 (예: 06:00, 05:00, 20:00 등)")
@@ -969,7 +1022,7 @@ def get_market_and_news(ticker: str, custom_news_list: Optional[List[dict]] = No
             closes = hist['Close'].tolist()
             current_price = float(closes[-1])
             prev_close = float(closes[-2])
-            quant_info = calculate_quant_indicators(hist)
+            quant_info = calculate_quant_indicators(hist, ticker)
             try:
                 intraday = t.history(period="5d", interval="5m", prepost=True)
                 if not intraday.empty and 'Close' in intraday:
@@ -985,7 +1038,7 @@ def get_market_and_news(ticker: str, custom_news_list: Optional[List[dict]] = No
                 prev_close = getattr(fast_info, 'previous_close', None)
 
         if not quant_info:
-            quant_info = calculate_quant_indicators(hist)
+            quant_info = calculate_quant_indicators(hist, ticker)
 
         pe_ratio = None
         try:
@@ -1169,6 +1222,10 @@ def evaluate_market_with_quant_fallback(market_data: dict) -> StockSignal:
         cat_desc = ", ".join(pos_reasons[:2]) if pos_reasons else "신규 기업 뉴스 흐름"
         reason_ko = f"[퀀트·뉴스 실시간 분석] {cat_desc} 소식이 포착되었으나 현재 주가({pct_change:+}%, RSI {rsi:.1f}, 퀀트 {quant_score}점) 기준 초엄선 A급 진입 조건 도달 전이므로 눌림목 지지를 확인하며 신중 관망(HOLD)합니다."
 
+    eq_prof = get_equity_strength_profile(ticker)
+    if action == "BUY":
+        reason_ko = f"[{eq_prof['tier']} 자본해자: {eq_prof['cash_status']}] {reason_ko}"
+
     return StockSignal(
         ticker=ticker,
         stock_name=company_name,
@@ -1191,7 +1248,9 @@ def evaluate_market_with_quant_fallback(market_data: dict) -> StockSignal:
         pe_ratio=pe_ratio,
         consecutive_down_days=down_days,
         pullback_pct=pullback_pct,
-        quant_score=quant_score
+        quant_score=quant_score,
+        equity_tier=eq_prof.get("tier", "B-Tier"),
+        roe=eq_prof.get("roe")
     )
 
 # 8. AI 퀀트 트레이딩 판단 모델 (OpenAI 정상 시 LLM 분석 + 크레딧 소진 시 로컬 퀀트 엔진 즉시 전환)
@@ -1291,6 +1350,11 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         signal.pe_ratio = pe_ratio
         signal.consecutive_down_days = down_days
         signal.pullback_pct = pullback_pct
+        eq_prof = get_equity_strength_profile(ticker)
+        signal.equity_tier = eq_prof.get("tier", "B-Tier")
+        signal.roe = eq_prof.get("roe")
+        if signal.action == "BUY":
+            signal.reason = f"[{eq_prof['tier']} 자본해자: {eq_prof['cash_status']}] {signal.reason}"
         if signal.action == "BUY":
             signal.position_size_pct = 25.0
 
@@ -1464,7 +1528,9 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
             "quant_score": signal.quant_score,
             "pe_ratio": signal.pe_ratio,
             "consecutive_down_days": signal.consecutive_down_days,
-            "pullback_pct": signal.pullback_pct
+            "pullback_pct": signal.pullback_pct,
+            "equity_tier": signal.equity_tier,
+            "roe": signal.roe
         }
         try:
             producer.produce('stock-analysis-logs', key=signal.ticker, value=json.dumps(analysis_log_payload, ensure_ascii=False), callback=delivery_report)

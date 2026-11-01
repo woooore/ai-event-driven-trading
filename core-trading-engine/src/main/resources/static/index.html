@@ -3894,6 +3894,7 @@
               <span class="strat-pill" style="color: ${pricedInColor};">선반영 위험: ${pricedIn}</span>
               <span class="strat-pill" style="color: #a5b4fc;">${rsiText}</span>
               ${quantScoreText ? `<span class="strat-pill" style="color: #fde047;">${quantScoreText}</span>` : ''}
+              ${l.equity_tier && l.equity_tier.includes("S-Tier") ? `<span class="strat-pill" style="color: #facc15; border-color: rgba(250, 204, 21, 0.4); background: rgba(250, 204, 21, 0.1);">💎 자기자본 S-Tier</span>` : (l.equity_tier && l.equity_tier.includes("A-Tier") ? `<span class="strat-pill" style="color: #38bdf8;">🛡️ 자본우량 A-Tier</span>` : '')}
             </div>
           </div>
 

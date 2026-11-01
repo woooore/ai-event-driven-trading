@@ -52,4 +52,9 @@ public class AnalysisLogDto {
     
     @JsonProperty("quant_score")
     private Integer quantScore;
+
+    @JsonProperty("equity_tier")
+    private String equityTier;
+
+    private Double roe;
 }
