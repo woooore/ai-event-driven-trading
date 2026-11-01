@@ -78,10 +78,15 @@ services:
     container_name: ai-signal-worker
     depends_on:
       - kafka
+      - redis
     env_file:
       - ./ai-signal-worker/.env
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - engine-storage:/app/storage
     restart: always
     networks:
       - trading-net
