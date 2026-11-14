@@ -1472,6 +1472,112 @@ def evaluate_market_and_trade(market_data: dict) -> Optional[StockSignal]:
         handle_openai_exception(e, f"AI분석-{ticker}")
         return evaluate_market_with_quant_fallback(market_data)
 
+
+# =====================================================================
+# ★ 8-3. TradingAgents 5팀 투자심의 위원회 (초절약 핀포인트 최종 게이트)
+#   - 평소 99% 일반 뉴스는 비용 $0 로컬 엔진이 거르고,
+#   - 최종 BUY 직전 후보(S/A급)에 한해서만 [분석팀-강세/약세토론-리스크팀-PM] 5단계 검증 실행!
+# =====================================================================
+class TradingAgentsCommitteeReport(BaseModel):
+    bull_thesis: str = Field(description="리서치팀 강세론자(Bull): 매수를 지지하는 핵심 팩트 1문장")
+    bear_thesis: str = Field(description="리서치팀 약세론자(Bear): 매수를 반대하는 핵심 리스크 반론 1문장")
+    risk_audit: str = Field(description="리스크 관리팀: 선반영 위험, RSI/볼린저 과열, 손절폭 적정성 감사 1문장")
+    pm_decision: str = Field(description="포트폴리오 매니저 최종 결정: APPROVE(매수 승인) 또는 REJECT(관망 보류)")
+    pm_summary: str = Field(description="포트폴리오 매니저 최종 합의 판정 요약 1문장 (한국어)")
+
+def run_trading_agents_committee(signal: StockSignal, market_data: dict) -> StockSignal:
+    """최종 BUY 시그널 직전, 5개 전문 팀(분석-리서치토론-트레이더-리스크-PM) 관점으로 교차 검증"""
+    ticker = signal.ticker
+    pct_change = market_data.get('pct_change', 0.0)
+    quant = market_data.get('quant', {})
+    rsi = signal.rsi or quant.get('rsi', 50.0)
+    bb = signal.bollinger_b or quant.get('bollinger_b', 0.5)
+    atr_pct = signal.atr_pct or quant.get('atr_pct', 2.0)
+    eq_tier = signal.equity_tier or "B-Tier"
+    news_score = signal.news_impact_score or 50
+    quant_score = signal.quant_score or 55
+    headline = market_data['news'][0]['title'] if market_data.get('news') else ""
+
+    report: Optional[TradingAgentsCommitteeReport] = None
+
+    # 1) OpenAI 크레딧 사용 가능 시: 단 1회 호출로 5팀 위원회 토론 및 PM 최종 승인 도출
+    if is_openai_available():
+        committee_prompt = f"""
+너는 월스트리트 헤지펀드의 'TradingAgents 5팀 투자심의 위원회'다.
+1차 스크리닝을 통과한 매수 후보 종목에 대해 아래 5개 부서 관점으로 엄격하게 교차 검증하고 최종 승인(APPROVE) 또는 거부(REJECT)를 내려라.
+
+[후보 종목 정보]
+- 종목: {signal.stock_name} ({ticker}) | 현재가: ${signal.order_price} (당일 {pct_change:+}%)
+- 뉴스 헤드라인: {headline}
+- 뉴스 영향도: {news_score}점 | 퀀트 점수: {quant_score}점 | 자기자본 등급: {eq_tier} (ROE {signal.roe or 'N/A'}%)
+- 기술적 지표: RSI {rsi:.1f}, 볼린저밴드 %B {bb:.2f}, ATR 일일변동폭 {atr_pct:.1f}%
+- 1차 트레이더 제안: {signal.reason}
+
+[5팀 심의 절차]
+1. 분석팀: 펀더멘털(자기자본·실적)과 기술적 지표를 점검.
+2. 리서치팀(강세론자 vs 약세론자): 호재의 지속 가능성(Bull) vs 이미 주가에 선반영되었거나 거품일 위험(Bear)을 날카롭게 대립 토론.
+3. 리스크팀: 변동성(ATR) 대비 손절선(${signal.stop_loss})과 익절선(${signal.take_profit}) 적정성 감사.
+4. 포트폴리오 매니저(PM): 약세론자 반론이 치명적이거나 단기 추격매수 위험이 크면 과감히 REJECT, 확실한 비대칭 손익비면 APPROVE.
+반드시 한국어로 작성하라.
+"""
+        try:
+            resp = client.beta.chat.completions.parse(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": committee_prompt}],
+                response_format=TradingAgentsCommitteeReport
+            )
+            report = resp.choices[0].message.parsed
+        except Exception as e:
+            handle_openai_exception(e, f"5팀위원회-{ticker}")
+
+    # 2) OpenAI 미사용/소진 시: 무중단 로컬 5팀 룰베이스 위원회 작동 (비용 $0)
+    if report is None:
+        bull = f"자기자본 {eq_tier} 펀더멘털과 퀀트 {quant_score}점·뉴스 {news_score}점의 이중 모멘텀 확보"
+        bears = []
+        if pct_change >= 5.5:
+            bears.append(f"당일 이미 {pct_change:+.1f}% 급등하여 단기 선반영·차익매물 출회 위험")
+        if bb >= 0.88:
+            bears.append(f"볼린저밴드 상단(%B={bb:.2f}) 근접으로 단기 과열 부담")
+        if atr_pct >= 4.5 and eq_tier == "B-Tier":
+            bears.append(f"일일 변동성(ATR {atr_pct:.1f}%) 과다 및 자본해자 등급 열위")
+        if not bears:
+            bears.append(f"단기 시장 변동성 외 치명적 악재 미발견 (RSI {rsi:.1f} 안정권)")
+
+        bear_text = ", ".join(bears)
+        is_rejected = (pct_change >= 6.0 and news_score < 85) or (bb >= 0.92 and rsi >= 65.0) or (atr_pct >= 5.0 and eq_tier == "B-Tier")
+        decision = "REJECT" if is_rejected else "APPROVE"
+        risk_text = f"ATR 변동폭 {atr_pct:.1f}% 기준 손절 ${signal.stop_loss:.2f}/익절 ${signal.take_profit:.2f} 손익비 감사 완료"
+        pm_text = (
+            f"약세론자 우려({bear_text})가 우세하여 추격 매수 방지를 위해 관망(HOLD) 전환"
+            if is_rejected
+            else f"강세 논거가 약세 반론을 압도하고 리스크 감사 통과하여 최종 매수 승인"
+        )
+        report = TradingAgentsCommitteeReport(
+            bull_thesis=bull,
+            bear_thesis=bear_text,
+            risk_audit=risk_text,
+            pm_decision=decision,
+            pm_summary=pm_text
+        )
+
+    log_ts(f"   🏛️ [5팀 위원회 심의] {ticker} -> PM 결정: {report.pm_decision}")
+    log_ts(f"      ├─ 🐂 강세론(Bull): {report.bull_thesis}")
+    log_ts(f"      ├─ 🐻 약세론(Bear): {report.bear_thesis}")
+    log_ts(f"      ├─ 🛡️ 리스크팀 감사: {report.risk_audit}")
+    log_ts(f"      └─ 👔 PM 최종판정: {report.pm_summary}")
+
+    committee_note = f"[5팀 위원회 {report.pm_decision}] 🐂강세: {report.bull_thesis} | 🐻약세: {report.bear_thesis} | 👔PM: {report.pm_summary}"
+
+    if report.pm_decision.upper() == "REJECT":
+        signal.action = "HOLD"
+        signal.confidence = min(signal.confidence, 0.55)
+        signal.position_size_pct = 0.0
+        signal.reason = f"{committee_note} (원안: {signal.reason})"
+    else:
+        signal.reason = f"{committee_note} || {signal.reason}"
+
+    return signal
+
 # 8-2. 미국 증시 거래소 개장 시간 판정 & 주말 모니터링 모드 가드
 WEEKEND_INTEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekend_intel_scores.json")
 
@@ -1586,6 +1692,10 @@ def process_single_ticker(ticker: str, custom_news: Optional[List[dict]] = None)
     signal = evaluate_market_and_trade(market_data)
     if not signal:
         return False
+
+    # ★ 1차 엄선 매수를 통과한 진짜 BUY 후보에만 [5팀 TradingAgents 투자심의 위원회] 최종 검증 실행
+    if signal.action == "BUY" and signal.confidence >= 0.78 and ((signal.news_impact_score or 0) >= 74 or (signal.quant_score or 0) >= 76):
+        signal = run_trading_agents_committee(signal, market_data)
 
     # 분석 완료된 모든 기사를 Redis 및 유사도 캐시에 영구 등록 (재호출 차단)
     for n in fresh_news:
