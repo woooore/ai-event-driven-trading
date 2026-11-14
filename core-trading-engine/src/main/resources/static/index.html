@@ -2059,7 +2059,7 @@
     <!-- STRATEGY BANNER -->
     <div class="strategy-banner">
       <div>
-        <strong>⚡ 적용 퀀트 & AI 로보어드바이저 룰:</strong> RAG 실패 일지 피드백 | 기술적 과매수 필터(RSI 70 미만) | Redis 분산 락 | <strong>고점 추적 트레일링 스탑(+2.5% 발동, 고점 대비 -3.0% 익절)</strong> | <strong>48시간 타임 컷</strong> | 안전 손절 <strong>-6.5%</strong> | <strong>악재 감지 즉시 긴급 매도</strong>
+        <strong>⚡ 적용 퀀트 & AI 로보어드바이저 룰:</strong> RAG 실패 일지 피드백 | 기술적 과매수 필터(RSI 70 미만) | Redis 분산 락 | <strong>익절 상한 없음(상승 추세 무제한 보유)</strong> | <strong>트레일링 스탑(+8.0% 발동, 고점 대비 -5.0% 익절)</strong> | 안전 손절 <strong>-6.5%</strong> | <strong>CEO 스캔들·악재 감지 즉시 긴급 매도</strong>
       </div>
       <div class="strategy-tags">
         <span class="strat-pill" style="color: #67e8f9;">🔒 REDIS DISTRIBUTED LOCK</span>
@@ -2181,7 +2181,7 @@
                   <th>매수 평단가</th>
                   <th>실시간 현재가</th>
                   <th>수익률 (손익)</th>
-                  <th>익절(+3%) / 손절(-6.5%)</th>
+                  <th>트레일링 / 손절(-6.5%)</th>
                   <th>액션</th>
                 </tr>
               </thead>
@@ -2333,7 +2333,7 @@
                 <th>현재 평가액</th>
                 <th>평가 손익</th>
                 <th>수익률</th>
-                <th>익절선(+3%) / 손절선(-6.5%)</th>
+                <th>트레일링 / 손절선(-6.5%)</th>
                 <th>액션</th>
               </tr>
             </thead>
@@ -2883,7 +2883,7 @@
                 <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${formatUsd(p.unrealizedPnl)}</div>
               </td>
               <td>
-                <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">익절: ${formatUsd(p.takeProfitPrice)}</div>
+                <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">익절: 상한없음 (추세보유)</div>
                 <div style="font-size: 11px; color: var(--accent-red); font-family: var(--font-mono);">손절: ${formatUsd(p.stopLossPrice)}</div>
               </td>
               <td>
@@ -3214,8 +3214,8 @@
                 <span class="balance-row-val">${formatUsd(p.currentPrice)}</span>
               </div>
               <div class="balance-row-item">
-                <span class="balance-row-label">🎯 목표 익절선 (+3.0%)</span>
-                <span class="balance-row-val" style="color: var(--accent-green); font-size: 13px;">${formatUsd(p.takeProfitPrice)}</span>
+                <span class="balance-row-label">🚀 목표 익절선 (상한 없음)</span>
+                <span class="balance-row-val" style="color: var(--accent-green); font-size: 13px;">추세 무제한 보유</span>
               </div>
               <div class="balance-row-item">
                 <span class="balance-row-label">🛡️ 안전 손절선 (-6.5%)</span>
@@ -3272,7 +3272,7 @@
               <span class="number-mono ${pnlClass}" style="font-weight: 700;">${formatPct(profitRate)}</span>
             </td>
             <td>
-              <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">익절: ${formatUsd(p.takeProfitPrice)}</div>
+              <div style="font-size: 11px; color: var(--accent-green); font-family: var(--font-mono);">익절: 상한없음 (추세보유)</div>
               <div style="font-size: 11px; color: var(--accent-red); font-family: var(--font-mono);">손절: ${formatUsd(p.stopLossPrice)}</div>
             </td>
             <td>
@@ -3560,7 +3560,7 @@
         // 당일 AI 일기 총평 생성
         let noteText = '';
         if (dayPnlUsd > 0.001) {
-          noteText = `이날은 총 <strong>${tickers.length}개 종목</strong>(매수 ${buyCount}건, 매도 ${sellCount}건)을 트레이딩했습니다. 시장의 뉴스 모멘텀을 기민하게 포착하여 목표 익절가(+3.0%)에 성공적으로 도달하며, 당일 총 실현 손익 <strong>+${formatUsd(dayPnlUsd)} (+${formatKrw(dayPnlUsd * rate)})</strong>의 우수한 플러스 수익으로 하루를 마감했습니다.`;
+          noteText = `이날은 총 <strong>${tickers.length}개 종목</strong>(매수 ${buyCount}건, 매도 ${sellCount}건)을 트레이딩했습니다. 시장의 뉴스 모멘텀을 기민하게 포착하여 추세 수익 실현에 성공하며, 당일 총 실현 손익 <strong>+${formatUsd(dayPnlUsd)} (+${formatKrw(dayPnlUsd * rate)})</strong>의 우수한 플러스 수익으로 하루를 마감했습니다.`;
         } else if (dayPnlUsd < -0.001) {
           noteText = `이날은 총 <strong>${tickers.length}개 종목</strong>(매수 ${buyCount}건, 매도 ${sellCount}건)을 트레이딩했습니다. 시장 변동성으로 인해 리스크 관리 안전 손절(-6.5%) 원칙이 가동되어 당일 실현 손익 <strong>${formatUsd(dayPnlUsd)} (${formatKrw(dayPnlUsd * rate)})</strong>을 기록했습니다. 본 손실 거래의 맥락은 RAG 실패 매매 일지에 즉시 기록되어 다음 매매 시 유사한 고점/선반영 뉴스를 AI가 스스로 차단하도록 학습되었습니다.`;
         } else if (sellCount > 0) {

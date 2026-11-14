@@ -140,7 +140,9 @@ HIGH_IMPACT_CATALYST_WORDS: List[str] = [
     "earnings", "beats", "misses", "revenue", "eps", "guidance", "outlook", "raises", "cuts",
     "acquires", "acquisition", "merger", "deal", "contract", "fda", "approval", "phase 3",
     "dividend", "buyback", "repurchase", "upgrade", "downgrade", "record", "surges", "plunges",
-    "lawsuit", "probe", "investigation", "recall", "layoffs", "buyouts", "restructuring"
+    "lawsuit", "probe", "investigation", "recall", "layoffs", "buyouts", "restructuring",
+    "resign", "resigns", "resignation", "step down", "steps down", "ousted", "fired",
+    "scandal", "affair", "misconduct", "fraud", "sec charges", "indicted", "ceo exit"
 ]
 
 def extract_headline_tokens(title: str) -> Set[str]:
@@ -1250,7 +1252,19 @@ NEGATIVE_CATALYST_MAP = {
     "investigation": "규제 당국 조사 착수",
     "recall": "제품 리콜 이슈 발생",
     "plunge": "단기 매물 출회에 따른 급락",
-    "slump": "단기 수요 둔화 우려"
+    "slump": "단기 수요 둔화 우려",
+    "resign": "CEO/경영진 전격 사임 리스크",
+    "resigns": "CEO/경영진 전격 사임 리스크",
+    "resignation": "경영진 사임 및 리더십 공백 발생",
+    "step down": "핵심 경영진 사퇴 발표",
+    "steps down": "핵심 경영진 사퇴 발표",
+    "ousted": "경영진 해임 및 거버넌스 충격",
+    "scandal": "기업 평판·경영진 스캔들 악재",
+    "affair": "경영진 사생활 스캔들 및 사임 압박",
+    "misconduct": "경영진 윤리 위반 및 부정행위 적발",
+    "fraud": "회계 부정·사기 의혹 중대 악재",
+    "sec charges": "미 증권거래위원회(SEC) 기소/제재",
+    "indicted": "사법 리스크 및 기소 악재"
 }
 
 def evaluate_market_with_quant_fallback(market_data: dict) -> StockSignal:
@@ -1296,7 +1310,14 @@ def evaluate_market_with_quant_fallback(market_data: dict) -> StockSignal:
     sentiment = "NEUTRAL"
     priced_in_risk = "HIGH" if pct_change >= 6.5 else ("MEDIUM" if pct_change >= 3.0 else "LOW")
 
-    if neg_reasons and len(neg_reasons) > len(pos_reasons) and pct_change <= -2.0:
+    severe_exec_crisis = any(k in hl_low for k in ["resign", "resigns", "resignation", "step down", "steps down", "ousted", "scandal", "affair", "misconduct", "fraud", "sec charges", "indicted"])
+    if severe_exec_crisis:
+        action = "SELL"
+        confidence = 0.88
+        sentiment = "NEGATIVE"
+        news_score = 92
+        reason_ko = f"🚨 [경영진/거버넌스 긴급 악재 포착] {', '.join(neg_reasons[:2])} 속보가 공식 보도되어 주가 급락 위험 방어를 위해 즉각 긴급 청산(SELL)을 발동합니다."
+    elif neg_reasons and len(neg_reasons) > len(pos_reasons) and pct_change <= -2.0:
         action = "SELL"
         confidence = 0.78
         sentiment = "NEGATIVE"
@@ -1634,16 +1655,31 @@ def get_weekend_catalyst_bonus(ticker: str) -> float:
     return 0.0
 
 def is_us_market_open_or_premarket() -> tuple:
+    """
+    한국 표준시(KST) 기준 미국 증시 실매매 가능 시간 판정:
+    - 주말(토요일 06:00 ~ 월요일 22:30 전) 및 평일 낮(06:00 ~ 22:30 전):
+      실주문을 동결하고 뉴스/실적 호재·악재 인텔리전스만 DB에 축적!
+    - 실매매 가동 시간: 평일 밤 22:30 KST ~ 익일 오전 06:00 KST (월요일 밤 22:30 개시 ~ 토요일 새벽 06:00 마감)
+    """
     now_kst = get_now_kst()
-    weekday = now_kst.weekday()
+    weekday = now_kst.weekday() # 0:월, 1:화, 2:수, 3:목, 4:금, 5:토, 6:일
     hour = now_kst.hour
-    if weekday == 5 and hour >= 9:
-        return False, "주말 시장 휴장 (토요일 주말 24H 인텔리전스 모니터링 모드)"
-    elif weekday == 6:
-        return False, "주말 시장 휴장 (일요일 주말 24H 인텔리전스 모니터링 모드)"
-    elif weekday == 0 and hour < 17:
-        return False, "월요일 프리마켓 개장 대기 (주말 축적 호재 인텔리전스 반영 준비 중)"
-    return True, "정규장/프리마켓 매매 가능 시간"
+    minute = now_kst.minute
+
+    if weekday == 5: # 토요일: 새벽 06:00 마감 이후 주말 휴장
+        if hour >= 6:
+            return False, "주말 휴장 (토요일 뉴스·실적 인텔리전스 축적 모드)"
+        return True, "금요일 정규장 연장 매매 가능 시간 (~06:00 KST)"
+    elif weekday == 6: # 일요일: 종일 휴장
+        return False, "주말 휴장 (일요일 뉴스·실적 인텔리전스 축적 모드)"
+    else: # 월(0) ~ 금(4)
+        # 화~금은 전날 밤 22:30부터 이어진 새벽 00:00~05:59 정규장 포함 (단, 월요일 새벽은 일요일 밤 휴장이므로 제외)
+        if weekday >= 1 and hour < 6:
+            return True, "미국 정규장 매매 가능 시간 (~06:00 KST)"
+        # 당일 밤 22:30부터 매매 개시!
+        if (hour == 22 and minute >= 30) or hour >= 23:
+            return True, "미국 증시 실매매 가동 시간 (22:30 KST 개시)"
+        return False, f"장 개장 대기 모드 (22:30 KST 매매 개시 전까지 뉴스·호재 축적 중)"
 
 current_scan_offset = 0
 

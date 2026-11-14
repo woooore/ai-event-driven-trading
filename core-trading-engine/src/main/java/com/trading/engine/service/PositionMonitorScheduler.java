@@ -33,19 +33,19 @@ public class PositionMonitorScheduler {
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${trading.take-profit-ratio:0.03}")
-    private double defaultTakeProfitRatio; // 기본 목표선 (+3.0%)
+    private double defaultTakeProfitRatio; // (참고용 레거시 값: 상한 고정 익절 해제됨)
 
-    @Value("${trading.trailing-activation-ratio:0.025}")
-    private double trailingActivationRatio; // +2.5% 수익 도달 시 트레일링 스탑 모드 가동
+    @Value("${trading.trailing-activation-ratio:0.08}")
+    private double trailingActivationRatio; // +8.0% 이상 충분한 추세 수익 도달 시 트레일링 스탑 모드 가동
 
-    @Value("${trading.trailing-pullback-ratio:0.030}")
-    private double trailingPullbackRatio;   // 고점 대비 -3.0% 하락 시 추세 반전으로 익절 청산
+    @Value("${trading.trailing-pullback-ratio:0.05}")
+    private double trailingPullbackRatio;   // 고점 대비 -5.0% 하락 시 추세 반전으로 익절 청산
 
     @Value("${trading.stop-loss-ratio:0.065}")
     private double defaultStopLossRatio;   // 기본 -6.5% 하락 시 안전 손절
 
-    @Value("${trading.max-hold-hours:48}")
-    private long maxHoldHours;              // 뉴스 모멘텀 유효기간 (48시간 경과 후 횡보 시 타임 컷)
+    @Value("${trading.max-hold-hours:72}")
+    private long maxHoldHours;              // 뉴스 모멘텀 유효기간 (72시간 경과 후 손실/무수익 횡보 시에만 타임 컷)
 
     private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
@@ -95,19 +95,10 @@ public class PositionMonitorScheduler {
                 pos.setHighestPrice(livePrice);
             }
 
-            // 0. 목표 익절선 (+3.0%) 도달 시 즉시 확정 익절 매도!
-            double targetTakeProfit = pos.getTakeProfitPrice() > 0 ? pos.getTakeProfitPrice() : (pos.getBuyPrice() * (1.0 + defaultTakeProfitRatio));
-            if (livePrice >= targetTakeProfit || profitRate >= 3.0) {
-                log.info(">> 🎯 [목표 익절선 도달 즉시 청산] {} 현재가 ${} >= 목표가 ${} (달성 수익률: +{}%)",
-                        ticker, String.format(Locale.US, "%.2f", livePrice),
-                        String.format(Locale.US, "%.2f", targetTakeProfit),
-                        String.format(Locale.US, "%.2f", profitRate));
-                portfolioManager.sellPosition(ticker, livePrice,
-                        String.format(Locale.US, "목표 익절선 ($%.2f) 돌파 확정 이익 실현 (수익률: +%.2f%%)", targetTakeProfit, profitRate));
-                continue;
-            }
+            // 0. [익절 상한선 해제] 계속 오르는 강세 주도주는 +3% 도달로 강제 매도하지 않고 추세를 끝까지 보유!
+            // (단, +8.0% 이상 수익 시 고점 대비 -5.0% 되돌림 트레일링 스탑과 -6.5% 안전 손절선으로만 방어)
 
-            // 1. 트레일링 스탑 활성화 검사 (+2.5% 이상 수익 시 가동 시작)
+            // 1. 트레일링 스탑 활성화 검사 (+8.0% 이상 충분한 추세 수익 시 가동 시작)
             if (!pos.isTrailingStopActive() && livePrice >= pos.getBuyPrice() * (1.0 + trailingActivationRatio)) {
                 pos.setTrailingStopActive(true);
                 double initialTrailingPrice = pos.getHighestPrice() * (1.0 - trailingPullbackRatio);
@@ -116,7 +107,7 @@ public class PositionMonitorScheduler {
                         ticker, String.format(Locale.US, "%.2f", profitRate), String.format(Locale.US, "%.2f", initialTrailingPrice));
             }
 
-            // 2. 트레일링 스탑 익절 청산 검사 (고점 대비 -3.0% 되돌림 터치 시)
+            // 2. 트레일링 스탑 익절 청산 검사 (고점 대비 -5.0% 되돌림 터치 시)
             if (pos.isTrailingStopActive()) {
                 double updatedTrailingPrice = pos.getHighestPrice() * (1.0 - trailingPullbackRatio);
                 if (updatedTrailingPrice > pos.getTrailingStopPrice()) {
@@ -138,14 +129,14 @@ public class PositionMonitorScheduler {
                 }
             }
 
-            // 3. 타임 컷 (48시간 이상 보유 후 횡보 지속 시 자본 회전율 확보 매도)
+            // 3. 타임 컷 (72시간 이상 보유 후에도 수익이 나지 않은 약세/횡보 종목만 교체, 수익 중인 종목은 계속 보유)
             if (pos.getBuyTime() != null) {
                 long hoursHeld = java.time.Duration.between(pos.getBuyTime(), LocalDateTime.now(KST_ZONE)).toHours();
-                if (hoursHeld >= maxHoldHours && Math.abs(profitRate) <= 1.5) {
-                    log.info(">> ⏱️ [타임 컷 모멘텀 소멸 청산] {} 보유시간 {}시간 경과 후 횡보(수익률 {}%). 현금 회전율 확보 매도.",
+                if (hoursHeld >= maxHoldHours && profitRate <= 0.2) {
+                    log.info(">> ⏱️ [타임 컷 모멘텀 소멸 청산] {} 보유시간 {}시간 경과 후 무수익/횡보(수익률 {}%). 현금 회전율 확보 매도.",
                             ticker, hoursHeld, String.format(Locale.US, "%.2f", profitRate));
                     portfolioManager.sellPosition(ticker, livePrice,
-                            String.format(Locale.US, "이벤트 모멘텀 소멸 타임 컷 (%d시간 보유 후 횡보 청산, 수익률: %+.2f%%)", hoursHeld, profitRate));
+                            String.format(Locale.US, "이벤트 모멘텀 소멸 타임 컷 (%d시간 보유 후 무수익 횡보 청산, 수익률: %+.2f%%)", hoursHeld, profitRate));
                     continue;
                 }
             }
